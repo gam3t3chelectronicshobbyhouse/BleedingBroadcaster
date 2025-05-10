@@ -1,52 +1,34 @@
 #!/bin/bash
 
-# Directory where the application files are stored
-APP_DIR="$HOME/BleedingBroadcaster"  # Replace with your actual app directory
-GIT_REPO="https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"  #GitHub repository
+# Bleeding Broadcaster Updater Script
 
-# Function to check if git is installed
-check_git() {
-    if ! command -v git &>/dev/null; then
-        echo "Git not found, please install Git first."
-        exit 1
-    fi
-}
+INSTALL_DIR="$HOME/BleedingBroadcaster"
+REPO_URL="https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"
 
-# Function to pull the latest changes from the repository
-git_pull() {
-    echo "Fetching the latest updates from the repository..."
-    cd "$APP_DIR" || exit 1
-    git fetch --all
-    git reset --hard origin/main  # Assuming 'main' is your branch
-}
+# ---- Output colors (if terminal supports) ----
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
 
-# Function to handle downloading and replacing files
-download_files() {
-    echo "Downloading new files from the GitHub repository..."
-    git_pull
+echo -e "${GREEN}🔄 Updating Bleeding Broadcaster...${NC}"
 
-    # Assuming all files are in the repo and will be overwritten
-    echo "Replacing old files with the new ones..."
-    git checkout .
-}
+# ---- Check if install directory exists ----
+if [ ! -d "$INSTALL_DIR" ]; then
+  echo -e "${RED}❌ Error: Directory $INSTALL_DIR not found.${NC}"
+  echo "Please run the install script first:"
+  echo "  curl -sSL $REPO_URL/raw/main/install_bleeding_broadcaster.sh | bash"
+  exit 1
+fi
 
-# Function to restart the application if required
-restart_application() {
-    echo "Update complete! Restart Bleeding Broadcaster for changes to take effect.."
-   }
+# ---- Pull latest changes ----
+cd "$INSTALL_DIR" || exit
+git pull
 
-# Function to handle errors and clean exit
-handle_error() {
-    echo "An error occurred during the update process. Please check the logs and try again."
-    exit 1
-}
+if [ $? -eq 0 ]; then
+  echo -e "${GREEN}✅ Update completed successfully.${NC}"
+else
+  echo -e "${RED}❌ Update failed. Please check your internet connection or GitHub repo status.${NC}"
+fi
 
-# Main update script
-main() {
-    check_git
-    echo "Starting update process..."
-    download_files || handle_error
-    restart_application
-}
-
-main
+echo ""
+echo -e "🔁 If Bleeding Broadcaster is currently running, please restart it to apply updates."
