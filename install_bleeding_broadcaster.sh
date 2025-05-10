@@ -29,7 +29,7 @@ cat <<EOF > "$DESKTOP_FILE"
 Version=1.0
 Name=Bleeding Broadcaster
 Comment=Start Bleeding Broadcaster
-Exec=/usr/bin/python3 $INSTALL_DIR/bleedingbroadcaster.py
+Exec=lxterminal -e /usr/bin/python3  $INSTALL_DIR/bleedingbroadcaster.py
 Icon=$INSTALL_DIR/$ICON_NAME
 Terminal=false
 Type=Application
@@ -37,6 +37,7 @@ Categories=Utility;
 EOF
 
 chmod +x "$DESKTOP_FILE"
+chmod +x "$INSTALL_DIR/bleedingbroadcaster.py"
 
 echo "Installation complete! The Bleeding Broadcaster shortcut is now on your desktop."
 echo "Please restart the program if it's already running."
