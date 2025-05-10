@@ -40,11 +40,7 @@ Basic GPIO hookup (for broadcasting antenna)
 curl -sSL https://raw.githubusercontent.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster/main/install_bleeding_broadcaster.sh | bash
 ```
 
-❌ Uninstallation
 
-```bash
-curl -sSL https://raw.githubusercontent.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster/main/uninstall_bleeding_broadcaster.sh | bash
-```
 
 📈 Connection Guide
 
