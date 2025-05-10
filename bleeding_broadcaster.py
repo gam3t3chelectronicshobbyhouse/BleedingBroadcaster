@@ -2,11 +2,11 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
+import threading
 import pygame
 import subprocess
 import RPi.GPIO as GPIO
 from tkinter import PhotoImage
-
 from fm_am_transmitter import FMTransmitter, AMTransmitter
 
 APP_NAME = "Bleeding Broadcaster"
@@ -16,15 +16,16 @@ AUDIO_DIR = "audio"
 PLAYLIST_DIR = "playlists"
 
 pygame.mixer.init()
+
+# Setup GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(4, GPIO.OUT)
-
 
 class BroadcasterGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(APP_NAME)
-        self.root.geometry("800x550")
+        self.root.geometry("800x600")
         if os.path.exists(ICON_FILE):
             self.root.iconphoto(False, tk.PhotoImage(file=ICON_FILE))
 
@@ -34,9 +35,9 @@ class BroadcasterGUI:
         self.now_playing = tk.StringVar(value="Nothing Playing")
 
         self.selected_mode = tk.StringVar(value="FM")
-        self.fm_frequency = 100000
-        self.am_frequency = 1000
         self.unit_display = "Hz"
+        self.selected_frequency_fm = 100000
+        self.selected_frequency_am = 1000
         self.transmitter = None
 
         os.makedirs(AUDIO_DIR, exist_ok=True)
@@ -47,9 +48,9 @@ class BroadcasterGUI:
 
     def setup_transmitter(self):
         if self.selected_mode.get() == "FM":
-            self.transmitter = FMTransmitter(4, self.fm_frequency)
+            self.transmitter = FMTransmitter(4, self.selected_frequency_fm)
         else:
-            self.transmitter = AMTransmitter(4, self.am_frequency)
+            self.transmitter = AMTransmitter(4, self.selected_frequency_am)
 
     def setup_ui(self):
         top_frame = tk.Frame(self.root)
@@ -73,29 +74,25 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
         ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
 
-        mode_frame = tk.LabelFrame(self.root, text="Broadcast Mode")
-        mode_frame.pack(fill="x", padx=10)
+        mode_frame = tk.LabelFrame(self.root, text="Broadcast Mode", padx=10, pady=10)
+        mode_frame.pack(padx=10, pady=5, fill="x")
 
-        tk.Radiobutton(mode_frame, text="FM", variable=self.selected_mode, value="FM",
-                       command=self.update_mode).pack(side="left", padx=10)
-        tk.Radiobutton(mode_frame, text="AM", variable=self.selected_mode, value="AM",
-                       command=self.update_mode).pack(side="left", padx=10)
+        ttk.Radiobutton(mode_frame, text="FM", variable=self.selected_mode, value="FM", command=self.update_mode).pack(side="left")
+        ttk.Radiobutton(mode_frame, text="AM", variable=self.selected_mode, value="AM", command=self.update_mode).pack(side="left")
 
-        freq_frame = tk.LabelFrame(self.root, text="Broadcast Frequency")
-        freq_frame.pack(fill="x", padx=10, pady=5)
+        freq_frame = tk.LabelFrame(self.root, text="Frequency Control", padx=10, pady=10)
+        freq_frame.pack(padx=10, pady=5, fill="x")
 
-        self.fm_slider = tk.Scale(freq_frame, from_=88000, to=108000, orient="horizontal",
-                                  label="FM Frequency (Hz)", command=self.update_frequency)
-        self.fm_slider.set(self.fm_frequency)
+        self.fm_slider = tk.Scale(freq_frame, from_=88000, to=108000, orient="horizontal", label="FM Frequency (Hz)", command=self.update_frequency)
+        self.fm_slider.set(self.selected_frequency_fm)
         self.fm_slider.pack(fill="x")
 
-        self.am_slider = tk.Scale(freq_frame, from_=500, to=1700, orient="horizontal",
-                                  label="AM Frequency (Hz)", command=self.update_frequency)
-        self.am_slider.set(self.am_frequency)
+        self.am_slider = tk.Scale(freq_frame, from_=530, to=1700, orient="horizontal", label="AM Frequency (kHz)", command=self.update_frequency)
+        self.am_slider.set(self.selected_frequency_am)
         self.am_slider.pack(fill="x")
 
         self.unit_toggle = ttk.Checkbutton(self.root, text="Display in AM/FM Bands", command=self.toggle_unit)
-        self.unit_toggle.pack(pady=5)
+        self.unit_toggle.pack(pady=10)
 
         playlist_frame = tk.LabelFrame(self.root, text="Playlist", padx=10, pady=10)
         playlist_frame.pack(padx=10, pady=5, fill="both", expand=True)
@@ -113,52 +110,45 @@ class BroadcasterGUI:
         bottom_frame = tk.Frame(self.root)
         bottom_frame.pack(side="bottom", fill="x", pady=10)
 
-        ttk.Button(bottom_frame, text="YouTube",
-                   command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
-        ttk.Button(bottom_frame, text="Instagram",
-                   command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
-        ttk.Button(bottom_frame, text="Donate ❤️",
-                   command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
-        ttk.Button(bottom_frame, text="Update", command=self.simple_update).pack(side="right", padx=10)
+        ttk.Button(bottom_frame, text="YouTube", command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
+        ttk.Button(bottom_frame, text="Instagram", command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
+        ttk.Button(bottom_frame, text="Donate ❤️", command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
+        ttk.Button(bottom_frame, text="Update", command=self.run_update_popup).pack(side="right", padx=10)
 
         self.update_mode()
 
     def update_mode(self):
-        mode = self.selected_mode.get()
         self.setup_transmitter()
-        if mode == "FM":
+        if self.selected_mode.get() == "FM":
             self.fm_slider.config(state="normal")
             self.am_slider.config(state="disabled")
             self.update_frequency(self.fm_slider.get())
         else:
-            self.fm_slider.config(state="disabled")
             self.am_slider.config(state="normal")
+            self.fm_slider.config(state="disabled")
             self.update_frequency(self.am_slider.get())
 
     def toggle_unit(self):
         self.unit_display = "AM/FM Bands" if self.unit_display == "Hz" else "Hz"
-        self.update_frequency(None)
+        self.update_frequency(self.fm_slider.get() if self.selected_mode.get() == "FM" else self.am_slider.get())
 
     def update_frequency(self, val):
         if self.selected_mode.get() == "FM":
-            self.fm_frequency = self.fm_slider.get()
-            freq = self.fm_frequency
+            self.selected_frequency_fm = int(val)
+            display_freq = f"{self.selected_frequency_fm} Hz" if self.unit_display == "Hz" else f"{self.selected_frequency_fm / 1000:.1f} MHz"
         else:
-            self.am_frequency = self.am_slider.get()
-            freq = self.am_frequency
+            self.selected_frequency_am = int(val)
+            display_freq = f"{self.selected_frequency_am * 1000} Hz" if self.unit_display == "Hz" else f"{self.selected_frequency_am} kHz"
 
-        if self.unit_display == "Hz":
-            self.now_playing.set(f"Broadcasting at: {freq} Hz")
-        else:
-            band = freq / 1000
-            unit = "MHz" if self.selected_mode.get() == "FM" else "kHz"
-            self.now_playing.set(f"{self.selected_mode.get()} Band: {band:.2f} {unit}")
+        self.now_playing.set(f"Broadcasting at: {display_freq}")
 
-        if hasattr(self.transmitter, 'set_frequency'):
+        if hasattr(self.transmitter, "set_frequency"):
+            freq = self.selected_frequency_fm if self.selected_mode.get() == "FM" else self.selected_frequency_am * 1000
             self.transmitter.set_frequency(freq)
 
     def play_tone(self):
-        self.now_playing.set(f"Now Playing: Test Tone ({self.fm_frequency if self.selected_mode.get() == 'FM' else self.am_frequency} Hz)")
+        freq = self.selected_frequency_fm if self.selected_mode.get() == "FM" else self.selected_frequency_am * 1000
+        self.now_playing.set(f"Now Playing: Test Tone ({freq} Hz)")
         if not self.transmitter.pwm_started:
             self.transmitter.start()
 
@@ -221,12 +211,36 @@ class BroadcasterGUI:
                         self.audio_files.append(path)
                         self.playlist_box.insert(tk.END, os.path.basename(path))
 
-    def simple_update(self):
-        try:
-            subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"])
-            messagebox.showinfo("Update", "Update script launched.\nCheck terminal for progress.")
-        except Exception as e:
-            messagebox.showerror("Update Error", f"Could not run update script:\n{e}")
+    def run_update_popup(self):
+        update_win = tk.Toplevel(self.root)
+        update_win.title("Updating Bleeding Broadcaster")
+        update_win.geometry("600x400")
+
+        ttk.Label(update_win, text="Checking for Updates...", font=("Arial", 14, "bold")).pack(pady=10)
+
+        log_text = tk.Text(update_win, wrap="word", height=15, font=("Courier", 10))
+        log_text.pack(fill="both", expand=True, padx=10, pady=5)
+
+        close_button = ttk.Button(update_win, text="Close", command=update_win.destroy, state="disabled")
+        close_button.pack(pady=10)
+
+        def update_process():
+            try:
+                process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"],
+                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                for line in process.stdout:
+                    log_text.insert(tk.END, line)
+                    log_text.see(tk.END)
+                process.wait()
+                status = "\n✅ Update Completed Successfully.\n" if process.returncode == 0 else f"\n❌ Update Failed (code {process.returncode}).\n"
+                log_text.insert(tk.END, status)
+            except Exception as e:
+                log_text.insert(tk.END, f"\n❌ Error: {str(e)}\n")
+            finally:
+                log_text.see(tk.END)
+                close_button.config(state="normal")
+
+        threading.Thread(target=update_process, daemon=True).start()
 
     def open_link(self, url):
         subprocess.run(["xdg-open", url])
