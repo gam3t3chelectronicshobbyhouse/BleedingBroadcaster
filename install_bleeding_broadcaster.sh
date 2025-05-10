@@ -37,7 +37,6 @@ Categories=Utility;
 EOF
 
 chmod +x "$DESKTOP_FILE"
-chmod +x "$INSTALL_DIR/bleedingbroadcaster.py"
 
 echo "Installation complete! The Bleeding Broadcaster shortcut is now on your desktop."
 echo "Please restart the program if it's already running."
