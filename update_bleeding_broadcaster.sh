@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Directory where the application files are stored
-APP_DIR="/path/to/your/application"  # Replace with your actual app directory
-GIT_REPO="https://github.com/yourusername/yourrepo.git"  # Replace with your actual GitHub repository
+APP_DIR="/home/BleedingBroadcaster"  # Replace with your actual app directory
+GIT_REPO="https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"  # Replace with your actual GitHub repository
 
 # Function to check if git is installed
 check_git() {
