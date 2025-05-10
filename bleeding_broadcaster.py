@@ -4,6 +4,8 @@ from tkinter import filedialog, messagebox
 from tkinter import ttk
 import pygame
 import subprocess
+import RPi.GPIO as GPIO
+from tkinter import PhotoImage
 
 APP_NAME = "Bleeding Broadcaster"
 ICON_FILE = "BleedingBroadcaster.png"
@@ -12,6 +14,10 @@ PLAYLIST_DIR = "playlists"
 
 # Initialize pygame mixer
 pygame.mixer.init()
+
+# Setup GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(4, GPIO.OUT)  # Set GPIO pin 4 as an output
 
 class BroadcasterGUI:
     def __init__(self, root):
@@ -32,9 +38,20 @@ class BroadcasterGUI:
         os.makedirs(AUDIO_DIR, exist_ok=True)
         os.makedirs(PLAYLIST_DIR, exist_ok=True)
 
+        # Default frequency set to 1000 Hz
+        self.selected_frequency = 1000
+
     def setup_ui(self):
         top_frame = tk.Frame(self.root)
         top_frame.pack(pady=10)
+
+        # Title and Graphic Display
+        title_label = tk.Label(top_frame, text="Bleeding Broadcaster by Gam3t3ch Electronics", font=("Arial", 16, "bold"))
+        title_label.pack()
+
+        self.image = PhotoImage(file=ICON_FILE)
+        image_label = tk.Label(top_frame, image=self.image)
+        image_label.pack(pady=5)
 
         self.now_playing_label = tk.Label(top_frame, textvariable=self.now_playing, font=("Arial", 14))
         self.now_playing_label.pack()
@@ -42,10 +59,21 @@ class BroadcasterGUI:
         control_frame = tk.Frame(self.root)
         control_frame.pack(pady=10)
 
-        ttk.Button(control_frame, text="Play", command=self.play_audio).grid(row=0, column=0, padx=5)
-        ttk.Button(control_frame, text="Pause", command=self.pause_audio).grid(row=0, column=1, padx=5)
-        ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=2, padx=5)
-        ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=3, padx=5)
+        # Tone Generator and Sweep buttons
+        ttk.Button(control_frame, text="Play Tone", command=self.play_tone).grid(row=0, column=0, padx=5)
+        ttk.Button(control_frame, text="Sweep Tone", command=self.sweep_tone).grid(row=0, column=1, padx=5)
+        ttk.Button(control_frame, text="Play", command=self.play_audio).grid(row=0, column=2, padx=5)
+        ttk.Button(control_frame, text="Pause", command=self.pause_audio).grid(row=0, column=3, padx=5)
+        ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
+        ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
+
+        # Frequency Control for GPIO Pin 4
+        freq_frame = tk.LabelFrame(self.root, text="Broadcast Frequency (GPIO Pin 4)", padx=10, pady=10)
+        freq_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        self.freq_slider = tk.Scale(freq_frame, from_=20, to=80000, orient="horizontal", label="Frequency (Hz)", command=self.update_frequency)
+        self.freq_slider.set(self.selected_frequency)  # Set default value to 1000 Hz
+        self.freq_slider.pack(fill="both", expand=True)
 
         playlist_frame = tk.LabelFrame(self.root, text="Playlist", padx=10, pady=10)
         playlist_frame.pack(padx=10, pady=10, fill="both", expand=True)
@@ -67,6 +95,10 @@ class BroadcasterGUI:
         ttk.Button(bottom_frame, text="YouTube", command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
         ttk.Button(bottom_frame, text="Instagram", command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
         ttk.Button(bottom_frame, text="Donate ❤️", command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
+
+    def update_frequency(self, val):
+        self.selected_frequency = int(val)  # Update the selected frequency
+        self.now_playing.set(f"Broadcasting at: {self.selected_frequency} Hz")
 
     def add_files(self):
         files = filedialog.askopenfilenames(title="Select Audio Files", filetypes=[("Audio", "*.mp3 *.wav")])
@@ -123,6 +155,18 @@ class BroadcasterGUI:
                     if os.path.isfile(path):
                         self.audio_files.append(path)
                         self.playlist_box.insert(tk.END, os.path.basename(path))
+
+    def play_tone(self):
+        # Tone generation logic placeholder (use SoX or another library here)
+        self.now_playing.set(f"Now Playing: Test Tone ({self.selected_frequency} Hz)")
+        # Example command to start test tone (replace with actual implementation)
+        # subprocess.call(["sox", "-n", "-r", "44100", "-c", "2", "test_tone.wav", "sine", str(self.selected_frequency)])
+
+    def sweep_tone(self):
+        # Sweep tone generation logic placeholder
+        self.now_playing.set("Now Playing: Sweep Tone")
+        # Example command to start sweep tone (replace with actual implementation)
+        # subprocess.call(["sox", "-n", "-r", "44100", "-c", "2", "sweep_tone.wav", "synth", "1", "sine", "1-1000"])
 
     def open_link(self, url):
         import webbrowser
