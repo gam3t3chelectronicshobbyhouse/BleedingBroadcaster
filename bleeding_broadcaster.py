@@ -268,7 +268,6 @@ def run_update_popup(self):
 
 
 
-
 if __name__ == "__main__":
     root = tk.Tk()
     gui = BroadcasterGUI(root)
