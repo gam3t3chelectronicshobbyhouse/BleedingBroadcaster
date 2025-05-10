@@ -1,53 +1,42 @@
 import RPi.GPIO as GPIO
+import time
 
-class FMTransmitter:
-    def __init__(self, pin, frequency):
-        self.pin = pin
+class BaseTransmitter:
+    def __init__(self, gpio_pin, frequency):
+        self.gpio_pin = gpio_pin
         self.frequency = frequency
-        self.modulation_frequency = 1000  # Default modulation frequency (audio tone)
-        GPIO.setup(self.pin, GPIO.OUT)
-        self.pwm = GPIO.PWM(self.pin, self.frequency)
+        self.pwm = None
+        self.pwm_started = False
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.gpio_pin, GPIO.OUT)
 
     def start(self):
-        print(f"Starting FM transmission on {self.frequency} Hz")
-        self.pwm.start(50)  # 50% duty cycle to start FM transmission
+        if self.pwm is None:
+            self.pwm = GPIO.PWM(self.gpio_pin, self.frequency)
+        self.pwm.start(50)  # 50% duty cycle
+        self.pwm_started = True
 
     def stop(self):
-        print("Stopping FM transmission.")
-        self.pwm.stop()
+        if self.pwm:
+            self.pwm.stop()
+            self.pwm = None
+        self.pwm_started = False
 
     def set_frequency(self, frequency):
-        """Set the broadcast frequency for FM."""
         self.frequency = frequency
-        self.pwm.ChangeFrequency(self.frequency)
+        if self.pwm_started and self.pwm:
+            self.pwm.ChangeFrequency(self.frequency)
 
-    def set_modulation(self, modulation_frequency):
-        """Set the modulation frequency for FM."""
-        self.modulation_frequency = modulation_frequency
-        # Implement modulation logic (optional)
+class FMTransmitter(BaseTransmitter):
+    """
+    FM transmission simulated via high-frequency PWM (requires low-pass filter to work realistically).
+    """
+    def __init__(self, gpio_pin, frequency=100000000):  # Default: 100 MHz
+        super().__init__(gpio_pin, frequency)
 
-class AMTransmitter:
-    def __init__(self, pin, frequency):
-        self.pin = pin
-        self.frequency = frequency
-        self.modulation_frequency = 1000  # Default modulation frequency (audio tone)
-        GPIO.setup(self.pin, GPIO.OUT)
-        self.pwm = GPIO.PWM(self.pin, self.frequency)
-
-    def start(self):
-        print(f"Starting AM transmission on {self.frequency} Hz")
-        self.pwm.start(50)  # Start with 50% duty cycle for AM signal
-
-    def stop(self):
-        print("Stopping AM transmission.")
-        self.pwm.stop()
-
-    def set_frequency(self, frequency):
-        """Set the broadcast frequency for AM."""
-        self.frequency = frequency
-        self.pwm.ChangeFrequency(self.frequency)
-
-    def set_modulation(self, modulation_frequency):
-        """Set the modulation frequency for AM."""
-        self.modulation_frequency = modulation_frequency
-        # Implement modulation logic (optional)
+class AMTransmitter(BaseTransmitter):
+    """
+    AM transmission simulated via PWM (with modulation technique if extended).
+    """
+    def __init__(self, gpio_pin, frequency=1000000):  # Default: 1 MHz
+        super().__init__(gpio_pin, frequency)
