@@ -8,7 +8,7 @@ import RPi.GPIO as GPIO
 from tkinter import PhotoImage
 
 APP_NAME = "Bleeding Broadcaster"
-ICON_FILE = "BleedingBroadcaster.png"
+ICON_FILE = "icon.png"  # Use a smaller icon image (icon.png) for the GUI
 AUDIO_DIR = "audio"
 PLAYLIST_DIR = "playlists"
 
@@ -25,7 +25,7 @@ class BroadcasterGUI:
         self.root.title(APP_NAME)
         self.root.geometry("800x500")
         if os.path.exists(ICON_FILE):
-            self.root.iconphoto(False, tk.PhotoImage(file=ICON_FILE))
+            self.root.iconphoto(False, tk.PhotoImage(file=ICON_FILE))  # Set the window icon
 
         self.audio_files = []
         self.current_index = 0
@@ -44,11 +44,12 @@ class BroadcasterGUI:
         top_frame = tk.Frame(self.root)
         top_frame.pack(pady=10)
 
-        # Title and Graphic Display
+        # Title and Graphic Display (Resized to banner size)
         title_label = tk.Label(top_frame, text="Bleeding Broadcaster by Gam3t3ch Electronics", font=("Arial", 16, "bold"))
         title_label.pack()
 
-        self.image = PhotoImage(file=ICON_FILE)
+        # Resize the graphic to a smaller banner size (e.g., 200x60)
+        self.image = PhotoImage(file=ICON_FILE).subsample(2)  # Resize it by a factor of 2 (adjust this as needed)
         image_label = tk.Label(top_frame, image=self.image)
         image_label.pack(pady=5)
 
@@ -172,13 +173,13 @@ class BroadcasterGUI:
         # Sweep tone generation logic placeholder
         self.now_playing.set("Now Playing: Sweep Tone")
         # Example command to start sweep tone (replace with actual implementation)
-        # subprocess.call(["sox", "-n", "-r", "44100", "-c", "2", "sweep_tone.wav", "synth", "1", "sine", "1-1000"])
-
+        # subprocess.call(["sox", "-n", "-r", "44100", "-c", "2", "sweep_tone.wav", "synth", "1", "sine", "1-20000"])
+    
     def open_link(self, url):
-        import webbrowser
-        webbrowser.open(url)
+        subprocess.run(["xdg-open", url])
 
+# Main loop
 if __name__ == "__main__":
     root = tk.Tk()
-    app = BroadcasterGUI(root)
+    gui = BroadcasterGUI(root)
     root.mainloop()
