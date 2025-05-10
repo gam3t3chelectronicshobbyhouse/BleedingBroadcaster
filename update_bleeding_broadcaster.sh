@@ -1,53 +1,28 @@
 #!/bin/bash
 
-# Bleeding Broadcaster Installer Script
-# Usage: curl -sSL https://raw.githubusercontent.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster/main/install_bleeding_broadcaster.sh | bash
+# Bleeding Broadcaster Updater Script
 
 INSTALL_DIR="$HOME/BleedingBroadcaster"
 REPO_URL="https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"
-ICON_PATH="$INSTALL_DIR/icon.png"
-DESKTOP_FILE="$HOME/Desktop/BleedingBroadcaster.desktop"
-PYTHON_EXEC="/usr/bin/python3"
-MAIN_SCRIPT="$INSTALL_DIR/bleedingbroadcaster.py"
 
-echo "Installing Bleeding Broadcaster..."
+echo "Updating Bleeding Broadcaster..."
 
-# Ensure required packages
-sudo apt-get update
-sudo apt-get install -y git python3 python3-pip python3-tk sox python3-pygame
+# Check if the directory exists
+if [ ! -d "$INSTALL_DIR" ]; then
+  echo "Error: $INSTALL_DIR does not exist."
+  echo "Please install the application first using the install script."
+  exit 1
+fi
 
-# Clone or update repo
-if [ -d "$INSTALL_DIR" ]; then
-  echo "Updating existing installation..."
-  cd "$INSTALL_DIR" || exit
-  git pull
+# Pull latest changes
+cd "$INSTALL_DIR" || exit
+git pull
+
+if [ $? -eq 0 ]; then
+  echo "Update completed successfully."
 else
-  echo "Cloning Bleeding Broadcaster..."
-  git clone "$REPO_URL" "$INSTALL_DIR"
+  echo "Update failed. Please check your internet connection or the repository status."
 fi
 
-# Create desktop shortcut
-echo "Creating desktop shortcut..."
-
-cat <<EOF > "$DESKTOP_FILE"
-[Desktop Entry]
-Version=1.0
-Name=Bleeding Broadcaster
-Comment=Start Bleeding Broadcaster
-Exec=$PYTHON_EXEC $MAIN_SCRIPT > /dev/null 2>&1
-Icon=$ICON_PATH
-Terminal=false
-Type=Application
-Categories=Utility;
-EOF
-
-chmod +x "$DESKTOP_FILE"
-
-# Ensure icon is readable
-if [ -f "$ICON_PATH" ]; then
-  xdg-icon-resource install --novendor --size 64 "$ICON_PATH" "bleeding-broadcaster"
-fi
-
-echo "Installation complete."
-echo "You can now launch Bleeding Broadcaster from your Desktop."
-echo "If the program was already open, please restart it to use the latest version."
+echo ""
+echo "If Bleeding Broadcaster is running, please restart it to apply the updates."
