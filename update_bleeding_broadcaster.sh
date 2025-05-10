@@ -1,15 +1,39 @@
 #!/bin/bash
 
-# Update script for Bleeding Broadcaster
-INSTALL_DIR="$HOME/BleedingBroadcaster"
+echo "=============================="
+echo " Bleeding Broadcaster Updater"
+echo "=============================="
+echo ""
 
-if [ -d "$INSTALL_DIR/.git" ]; then
-  echo "Checking for updates..."
-  cd "$INSTALL_DIR"
-  echo "Please close Bleeding Broadcaster before applying updates."
-  read -p "Press [Enter] to continue with update or Ctrl+C to cancel..."
-  git pull
-  echo "Bleeding Broadcaster has been updated. Please restart the application manually if it's open."
-else
-  echo " Git repo not found in $INSTALL_DIR. Please reinstall using the installer script."
+# Change to the script's directory (your project root)
+cd "$(dirname "$0")" || {
+    echo "Failed to enter script directory. Aborting."
+    exit 1
+}
+
+# Check if it's a git repository
+if [ ! -d .git ]; then
+    echo "Error: This directory is not a Git repository."
+    echo "Please clone the project using Git first."
+    exit 1
 fi
+
+# Optional: Backup current files
+backup_dir="backup_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$backup_dir"
+cp -r *.py *.sh "$backup_dir" 2>/dev/null
+
+echo "Backup created at: $backup_dir"
+echo ""
+
+# Pull updates from GitHub
+echo "Fetching latest updates..."
+git reset --hard HEAD
+git pull origin main || {
+    echo "Failed to pull from GitHub."
+    exit 1
+}
+
+echo ""
+echo "✅ Update complete."
+echo "Please restart the Bleeding Broadcaster app to apply changes."
