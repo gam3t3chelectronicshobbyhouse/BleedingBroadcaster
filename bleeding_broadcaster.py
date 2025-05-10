@@ -222,27 +222,30 @@ class BroadcasterGUI:
         close_button = ttk.Button(update_win, text="Close", command=update_win.destroy, state="disabled")
         close_button.pack(pady=10)
 
-        def update_process():
+         def run_update_popup(self):
+        update_win = tk.Toplevel(self.root)
+        update_win.title("Updating...")
+        update_win.geometry("400x300")
+        log_text = tk.Text(update_win, wrap="word")
+        log_text.pack(expand=True, fill="both", padx=10, pady=10)
+
+        def run_update():
             try:
-                process = subprocess.Popen(["bash", "$HOME/BleedingBroadcaster/update_bleeding_broadcaster.sh"],
-                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 for line in process.stdout:
                     log_text.insert(tk.END, line)
                     log_text.see(tk.END)
                 process.wait()
-                status = "\n✅ Update Completed Successfully.\n" if process.returncode == 0 else f"\n❌ Update Failed (code {process.returncode}).\n"
-                log_text.insert(tk.END, status)
+                if process.returncode == 0:
+                    log_text.insert(tk.END, "\nUpdate Completed.\n")
+                else:
+                    log_text.insert(tk.END, f"\nUpdate Failed with code {process.returncode}.\n")
             except Exception as e:
-                log_text.insert(tk.END, f"\n❌ Error: {str(e)}\n")
-            finally:
-                log_text.see(tk.END)
-                close_button.config(state="normal")
+                log_text.insert(tk.END, f"\nError: {str(e)}\n")
+            ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
+            tk.Label(update_win, text="Please restart the program.", font=("Arial", 10, "italic")).pack(pady=2)
 
-        threading.Thread(target=update_process, daemon=True).start()
-
-    def open_link(self, url):
-        subprocess.run(["xdg-open", url])
-
+        self.root.after(100, run_update)
 
 if __name__ == "__main__":
     root = tk.Tk()
