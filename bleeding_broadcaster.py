@@ -223,11 +223,11 @@ class BroadcasterGUI:
         close_button.pack(pady=10)
 
         def run_update_popup(self):
-        update_win = tk.Toplevel(self.root)
-        update_win.title("Updating...")
-        update_win.geometry("400x300")
-        log_text = tk.Text(update_win, wrap="word")
-        log_text.pack(expand=True, fill="both", padx=10, pady=10)
+            update_win = tk.Toplevel(self.root)
+            update_win.title("Updating...")
+            update_win.geometry("400x300")
+            log_text = tk.Text(update_win, wrap="word")
+            log_text.pack(expand=True, fill="both", padx=10, pady=10)
 
         def run_update():
             try:
