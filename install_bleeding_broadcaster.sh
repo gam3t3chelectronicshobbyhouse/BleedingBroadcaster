@@ -24,7 +24,7 @@ cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
 Name=Bleeding Broadcaster
 Comment=Broadcast AM/FM audio for testing
-Exec=python3 $INSTALL_DIR/bleeding_broadcaster_gui.py
+Exec=python3 $INSTALL_DIR/bleeding_broadcaster.py
 Icon=$INSTALL_DIR/$ICON_NAME
 Terminal=false
 Type=Application
