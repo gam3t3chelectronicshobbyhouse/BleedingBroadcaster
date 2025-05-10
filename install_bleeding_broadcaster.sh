@@ -29,19 +29,19 @@ fi
 # Create desktop shortcut
 echo "Creating desktop shortcut..."
 
-cat <<EOF > "$HOME/Desktop/BleedingBroadcaster.desktop"
+# Create desktop shortcut
+cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
-Version=1.0
 Name=Bleeding Broadcaster
-Comment=Start Bleeding Broadcaster
-Exec=lxterminal -e /home/pi/BleedingBroadcaster/start_bleeding_broadcaster.sh
-Icon=/home/pi/BleedingBroadcaster/icon.png
+Comment=Broadcast AM/FM audio for testing
+Exec=python3 $INSTALL_DIR/bleeding_broadcaster.py
+Icon=$INSTALL_DIR/$ICON_NAME
 Terminal=false
 Type=Application
-Categories=Utility;
+Categories=Audio;Utility;
 EOF
 
-chmod +x "$HOME/Desktop/BleedingBroadcaster.desktop"
+chmod +x "$DESKTOP_FILE"
 
 # Ensure icon is readable
 if [ -f "$ICON_PATH" ]; then
