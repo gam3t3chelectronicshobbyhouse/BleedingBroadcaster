@@ -229,17 +229,35 @@ def run_update_popup(self):
     log_text = tk.Text(update_win, wrap="word", height=10, width=50)
     log_text.pack(padx=10, pady=10)
 
-    # Function to run the update
+def run_update_popup(self):
+    # Create the update window
+    update_win = tk.Toplevel(self.root)
+    update_win.title("Updating...")
+    update_win.geometry("400x250")
+    update_win.resizable(False, False)  # Prevent resizing the update window
+
+    # Add a loading label
+    loading_label = tk.Label(update_win, text="Updating, please wait...", font=("Arial", 12, "bold"))
+    loading_label.pack(pady=10)
+
+    # Create a text box for logging output
+    log_text = tk.Text(update_win, wrap="word", height=8, width=50)
+    log_text.pack(padx=10, pady=10)
+
+    # Function to run the update process
     def run_update():
         try:
             # Run the update script and capture the output
-            process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"],
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             for line in process.stdout:
                 log_text.insert(tk.END, line)
                 log_text.see(tk.END)
+
+            # Wait for the process to complete
             process.wait()
 
-            # Update the log based on the process completion status
+            # Check the process exit code
             if process.returncode == 0:
                 log_text.insert(tk.END, "\n\nUpdate Completed Successfully!\n")
                 log_text.tag_add("success", "1.0", "end")
@@ -254,19 +272,13 @@ def run_update_popup(self):
             log_text.tag_add("error", "1.0", "end")
             log_text.tag_config("error", foreground="red")
 
-        # Stop the progress bar and update the UI
-        progress.stop()
-        progress.place_forget()
-
         # Add a close button and a restart message
         ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
 
         tk.Label(update_win, text="Please restart the program to complete the update.", font=("Arial", 10, "italic")).pack(pady=10)
 
-    # Run the update in a separate thread to keep the UI responsive
+    # Run the update after a slight delay
     self.root.after(100, run_update)
-
-
 
 if __name__ == "__main__":
     root = tk.Tk()
