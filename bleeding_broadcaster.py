@@ -32,14 +32,13 @@ class BroadcasterGUI:
         self.loop = tk.BooleanVar()
         self.now_playing = tk.StringVar(value="Nothing Playing")
 
+        self.selected_frequency = 1000  # Default frequency (Hz)
+
         self.setup_ui()
 
         # Create folders if not present
         os.makedirs(AUDIO_DIR, exist_ok=True)
         os.makedirs(PLAYLIST_DIR, exist_ok=True)
-
-        # Default frequency set to 1000 Hz
-        self.selected_frequency = 1000
 
     def setup_ui(self):
         top_frame = tk.Frame(self.root)
@@ -100,7 +99,7 @@ class BroadcasterGUI:
         ttk.Button(bottom_frame, text="Update", command=self.check_for_update).pack(side="right", padx=10)
 
     def update_frequency(self, val):
-        self.selected_frequency = int(val)  # Update the selected frequency
+        self.selected_frequency = int(val)  # Update the selected frequency (in Hz)
         self.now_playing.set(f"Broadcasting at: {self.selected_frequency} Hz")
 
     def check_for_update(self):
