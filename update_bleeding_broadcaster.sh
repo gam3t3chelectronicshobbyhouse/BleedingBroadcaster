@@ -32,9 +32,8 @@ download_files() {
 
 # Function to restart the application if required
 restart_application() {
-    echo "Update complete! Restarting the application..."
-    sudo systemctl restart bleeding_broadcaster  # Example: Adjust for your system's init system or method
-}
+    echo "Update complete! Restart Bleeding Broadcaster for changes to take effect.."
+   }
 
 # Function to handle errors and clean exit
 handle_error() {
