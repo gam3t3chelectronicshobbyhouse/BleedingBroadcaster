@@ -5,7 +5,7 @@
 
 INSTALL_DIR="$HOME/BleedingBroadcaster"
 REPO_URL="https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"
-ICON_NAME="BleedingBroadcaster.png"
+ICON_NAME="icon.png"
 DESKTOP_FILE="$HOME/Desktop/BleedingBroadcaster.desktop"
 
 # Ensure dependencies
