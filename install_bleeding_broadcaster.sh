@@ -34,7 +34,7 @@ cat <<EOF > "$DESKTOP_FILE"
 Version=1.0
 Name=Bleeding Broadcaster
 Comment=Start Bleeding Broadcaster
-Exec=$PYTHON_EXEC $MAIN_SCRIPT > /dev/null 2>&1
+Exec=lxterminal -e $PYTHON_EXEC $MAIN_SCRIPT
 Icon=$ICON_PATH
 Terminal=false
 Type=Application
