@@ -1,121 +1,132 @@
+# bleeding_broadcaster.py
+# GUI for Bleeding Broadcaster by Gam3t3ch Electronics
+
 import os
+import subprocess
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
+import pygame
 
-class RadioBroadcaster:
-    def __init__(self, master):
-        self.master = master
-        master.title("Bleeding Broadcaster")
+# Initialize pygame mixer
+pygame.mixer.init()
 
-        # Title Banner
-        self.title_label = tk.Label(master, text="Bleeding Broadcaster", font=("Helvetica", 16, "bold"))
-        self.title_label.grid(row=0, column=0, columnspan=3, pady=(5, 10))
+# Globals
+playlist = []
+current_index = 0
+loop_playlist = tk.BooleanVar()
 
-        # Modulation Type
-        self.mod_label = tk.Label(master, text="Modulation:")
-        self.mod_label.grid(row=1, column=0, sticky="e")
+# GUI Setup
+root = tk.Tk()
+root.title("Bleeding Broadcaster - by Gam3t3ch Electronics")
+root.geometry("800x600")
+root.iconphoto(False, tk.PhotoImage(file="BleedingBroadcaster.png"))
 
-        self.modulation = tk.StringVar(value="am")
-        tk.Radiobutton(master, text="AM", variable=self.modulation, value="am").grid(row=1, column=1)
-        tk.Radiobutton(master, text="FM", variable=self.modulation, value="fm").grid(row=1, column=2)
+# Tone Generator Frame
+tone_frame = ttk.LabelFrame(root, text="Test Tone Generator")
+tone_frame.pack(fill="x", padx=10, pady=10)
 
-        # Frequency Input
-        self.freq_label = tk.Label(master, text="Frequency (kHz for AM, MHz for FM):")
-        self.freq_label.grid(row=2, column=0, sticky="e")
+waveform_var = tk.StringVar(value="sine")
+freq_var = tk.StringVar(value="1000")
+duration_var = tk.StringVar(value="5")
 
-        self.freq_entry = tk.Entry(master)
-        self.freq_entry.grid(row=2, column=1, columnspan=2, sticky="we")
+waveform_menu = ttk.Combobox(tone_frame, textvariable=waveform_var, values=["sine", "square", "triangle", "noise"])
+wavelength_label = ttk.Label(tone_frame, text="Frequency (Hz):")
+waveform_menu.grid(row=0, column=0, padx=5, pady=5)
+wavelength_label.grid(row=0, column=1)
+tk.Entry(tone_frame, textvariable=freq_var, width=10).grid(row=0, column=2)
+tk.Label(tone_frame, text="Duration (s):").grid(row=0, column=3)
+tk.Entry(tone_frame, textvariable=duration_var, width=5).grid(row=0, column=4)
 
-        # Audio File Selection
-        self.audio_label = tk.Label(master, text="Audio File:")
-        self.audio_label.grid(row=3, column=0, sticky="e")
+# Sweep Tone Controls
+sweep_frame = ttk.LabelFrame(root, text="Auto Sweep Generator")
+sweep_frame.pack(fill="x", padx=10, pady=10)
 
-        self.audio_path = tk.StringVar()
-        self.audio_entry = tk.Entry(master, textvariable=self.audio_path, width=40)
-        self.audio_entry.grid(row=3, column=1)
+sweep_start_var = tk.StringVar(value="100")
+sweep_end_var = tk.StringVar(value="10000")
+sweep_duration_var = tk.StringVar(value="10")
 
-        self.browse_button = tk.Button(master, text="Browse", command=self.browse_file)
-        self.browse_button.grid(row=3, column=2)
+sweep_controls = [
+    ("Start Freq", sweep_start_var),
+    ("End Freq", sweep_end_var),
+    ("Duration", sweep_duration_var)
+]
 
-        # Tone Generator Section
-        self.tone_label = tk.Label(master, text="Test Tone Generator (SoX):", font=("Helvetica", 10, "bold"))
-        self.tone_label.grid(row=4, column=0, columnspan=3, pady=(10, 0))
+for idx, (label, var) in enumerate(sweep_controls):
+    ttk.Label(sweep_frame, text=label).grid(row=0, column=idx*2)
+    tk.Entry(sweep_frame, textvariable=var, width=8).grid(row=0, column=idx*2+1)
 
-        self.tone_buttons = [
-            ("440Hz Sine", lambda: self.generate_tone("sine", 440)),
-            ("Sweep 20Hz-20kHz", lambda: self.generate_tone("sweep")),
-            ("Pink Noise", lambda: self.generate_tone("pinknoise")),
-            ("White Noise", lambda: self.generate_tone("whitenoise")),
-        ]
-        for idx, (label, command) in enumerate(self.tone_buttons):
-            tk.Button(master, text=label, command=command).grid(row=5, column=idx % 3, pady=2)
+# Playlist Frame
+playlist_frame = ttk.LabelFrame(root, text="Broadcast Playlist")
+playlist_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Control Buttons
-        self.start_button = tk.Button(master, text="Start Transmission", command=self.start_transmission, bg="green", fg="white")
-        self.start_button.grid(row=6, column=0, columnspan=2, pady=10)
+playlist_box = tk.Listbox(playlist_frame)
+playlist_box.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.stop_button = tk.Button(master, text="Stop", command=self.stop_transmission, bg="red", fg="white")
-        self.stop_button.grid(row=6, column=2, pady=10)
+# Command Functions
+def generate_tone():
+    filename = "tone.wav"
+    subprocess.call(['sox', '-n', '-r', '44100', '-c', '1', filename, 'synth', duration_var.get(), waveform_var.get(), freq_var.get()])
+    messagebox.showinfo("Done", f"Tone generated: {filename}")
 
-        # Output Status
-        self.status = tk.Text(master, height=10, width=60)
-        self.status.grid(row=7, column=0, columnspan=3)
-        self.log("Ready.")
+def generate_sweep():
+    filename = "sweep.wav"
+    freq_range = f"{sweep_start_var.get()}-{sweep_end_var.get()}"
+    subprocess.call(['sox', '-n', '-r', '44100', '-c', '1', filename, 'synth', sweep_duration_var.get(), 'sine', freq_range])
+    messagebox.showinfo("Done", f"Sweep generated: {filename}")
 
-        # Footer
-        self.footer = tk.Label(master, text="by Gam3t3ch Electronics", font=("Helvetica", 8))
-        self.footer.grid(row=8, column=0, columnspan=3, pady=(5, 5))
+def preview_file(filename):
+    pygame.mixer.music.load(filename)
+    pygame.mixer.music.play()
 
-    def browse_file(self):
-        file_path = filedialog.askopenfilename(filetypes=[("WAV files", "*.wav")])
-        if file_path:
-            self.audio_path.set(file_path)
+def add_file():
+    file = filedialog.askopenfilename(filetypes=[("Audio Files", "*.wav *.mp3")])
+    if file:
+        playlist.append(file)
+        playlist_box.insert(tk.END, os.path.basename(file))
 
-    def log(self, message):
-        self.status.insert(tk.END, f"{message}\n")
-        self.status.see(tk.END)
+def add_folder():
+    folder = filedialog.askdirectory()
+    if folder:
+        for file in os.listdir(folder):
+            if file.endswith('.wav') or file.endswith('.mp3'):
+                full_path = os.path.join(folder, file)
+                playlist.append(full_path)
+                playlist_box.insert(tk.END, file)
 
-    def start_transmission(self):
-        mod = self.modulation.get()
-        freq = self.freq_entry.get()
-        file = self.audio_path.get()
+def play_selected():
+    global current_index
+    try:
+        current_index = playlist_box.curselection()[0]
+        preview_file(playlist[current_index])
+    except:
+        messagebox.showwarning("Select File", "Select a file from the playlist")
 
-        if not freq or not file:
-            messagebox.showerror("Missing Data", "Please enter a frequency and select or generate a WAV file.")
-            return
+def next_track():
+    global current_index
+    if current_index + 1 < len(playlist):
+        current_index += 1
+        preview_file(playlist[current_index])
 
-        cmd = ""
-        if mod == "fm":
-            cmd = f"sudo ./rpitx/bin/piFM -f {freq} '{file}'"
-        else:
-            cmd = f"sudo ./rpitx/bin/piAM -f {freq} '{file}'"
+def toggle_loop():
+    pygame.mixer.music.set_endevent(pygame.USEREVENT)
+    if loop_playlist.get():
+        pygame.mixer.music.play(-1)
+    else:
+        pygame.mixer.music.play()
 
-        self.log(f"Starting {mod.upper()} transmission at {freq} with file: {file}")
-        self.log("Press STOP to end transmission.")
-        os.system(f"pkill piFM; pkill piAM; {cmd} &")
+def stop_playback():
+    pygame.mixer.music.stop()
 
-    def stop_transmission(self):
-        os.system("pkill piFM; pkill piAM")
-        self.log("Transmission stopped.")
+# Buttons
+tk.Button(tone_frame, text="Generate Tone", command=generate_tone).grid(row=0, column=5, padx=5)
+tk.Button(tone_frame, text="Preview", command=lambda: preview_file("tone.wav")).grid(row=0, column=6)
+tk.Button(sweep_frame, text="Generate Sweep", command=generate_sweep).grid(row=0, column=6, padx=5)
+tk.Button(sweep_frame, text="Preview Sweep", command=lambda: preview_file("sweep.wav")).grid(row=0, column=7)
+tk.Button(root, text="Add File", command=add_file).pack(side="left", padx=5)
+tk.Button(root, text="Add Folder", command=add_folder).pack(side="left", padx=5)
+tk.Button(root, text="Play Selected", command=play_selected).pack(side="left", padx=5)
+tk.Button(root, text="Next Track", command=next_track).pack(side="left", padx=5)
+tk.Checkbutton(root, text="Loop Playlist", variable=loop_playlist, command=toggle_loop).pack(side="left", padx=5)
+tk.Button(root, text="Stop", command=stop_playback).pack(side="left", padx=5)
 
-    def generate_tone(self, tone_type, freq=440):
-        filename = f"/tmp/{tone_type}.wav"
-        if tone_type == "sine":
-            cmd = f"sox -n -r 44100 -c 1 {filename} synth 5 sine {freq}"
-        elif tone_type == "sweep":
-            cmd = f"sox -n -r 44100 -c 1 {filename} synth 10 sine 20-20000"
-        elif tone_type == "pinknoise":
-            cmd = f"sox -n -r 44100 -c 1 {filename} synth 5 pinknoise"
-        elif tone_type == "whitenoise":
-            cmd = f"sox -n -r 44100 -c 1 {filename} synth 5 whitenoise"
-        else:
-            return
-
-        os.system(cmd)
-        self.audio_path.set(filename)
-        self.log(f"Generated {tone_type} to {filename}")
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = RadioBroadcaster(root)
-    root.mainloop()
+root.mainloop()
