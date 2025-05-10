@@ -247,6 +247,11 @@ class BroadcasterGUI:
 
         self.root.after(100, run_update)
 
+def open_link(self, url):
+        subprocess.run(["xdg-open", url])
+
+
+
 if __name__ == "__main__":
     root = tk.Tk()
     gui = BroadcasterGUI(root)
