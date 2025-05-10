@@ -56,8 +56,6 @@ class BroadcasterGUI:
         top_frame = tk.Frame(self.root)
         top_frame.pack(pady=10)
 
-        tk.Label(top_frame, text="Bleeding Broadcaster by Gam3t3ch Electronics", font=("Arial", 16, "bold")).pack()
-
         if os.path.exists(BANNER_FILE):
             self.banner_image = PhotoImage(file=BANNER_FILE).subsample(3)
             tk.Label(top_frame, image=self.banner_image).pack(pady=5)
