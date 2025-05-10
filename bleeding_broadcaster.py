@@ -209,46 +209,63 @@ class BroadcasterGUI:
                         self.audio_files.append(path)
                         self.playlist_box.insert(tk.END, os.path.basename(path))
 
-    def run_update_popup(self):
-        update_win = tk.Toplevel(self.root)
-        update_win.title("Updating Bleeding Broadcaster")
-        update_win.geometry("600x400")
+def run_update_popup(self):
+    # Create the update window
+    update_win = tk.Toplevel(self.root)
+    update_win.title("Updating...")
+    update_win.geometry("500x350")
+    update_win.resizable(False, False)  # Prevent resizing the update window
 
-        ttk.Label(update_win, text="Checking for Updates...", font=("Arial", 14, "bold")).pack(pady=10)
+    # Add a loading label
+    loading_label = tk.Label(update_win, text="Updating, please wait...", font=("Arial", 14, "bold"))
+    loading_label.pack(pady=10)
 
-        log_text = tk.Text(update_win, wrap="word", height=15, font=("Courier", 10))
-        log_text.pack(fill="both", expand=True, padx=10, pady=5)
+    # Create a progress bar
+    progress = ttk.Progressbar(update_win, length=300, mode='indeterminate')
+    progress.pack(pady=10)
+    progress.start()
 
-        close_button = ttk.Button(update_win, text="Close", command=update_win.destroy, state="disabled")
-        close_button.pack(pady=10)
+    # Create a text box for logging output
+    log_text = tk.Text(update_win, wrap="word", height=10, width=50)
+    log_text.pack(padx=10, pady=10)
 
-        def run_update_popup(self):
-            update_win = tk.Toplevel(self.root)
-            update_win.title("Updating...")
-            update_win.geometry("400x300")
-            log_text = tk.Text(update_win, wrap="word")
-            log_text.pack(expand=True, fill="both", padx=10, pady=10)
+    # Function to run the update
+    def run_update():
+        try:
+            # Run the update script and capture the output
+            process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            for line in process.stdout:
+                log_text.insert(tk.END, line)
+                log_text.see(tk.END)
+            process.wait()
 
-        def run_update():
-            try:
-                process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                for line in process.stdout:
-                    log_text.insert(tk.END, line)
-                    log_text.see(tk.END)
-                process.wait()
-                if process.returncode == 0:
-                    log_text.insert(tk.END, "\nUpdate Completed.\n")
-                else:
-                    log_text.insert(tk.END, f"\nUpdate Failed with code {process.returncode}.\n")
-            except Exception as e:
-                log_text.insert(tk.END, f"\nError: {str(e)}\n")
-            ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
-            tk.Label(update_win, text="Please restart the program.", font=("Arial", 10, "italic")).pack(pady=2)
+            # Update the log based on the process completion status
+            if process.returncode == 0:
+                log_text.insert(tk.END, "\n\nUpdate Completed Successfully!\n")
+                log_text.tag_add("success", "1.0", "end")
+                log_text.tag_config("success", foreground="green")
+            else:
+                log_text.insert(tk.END, f"\n\nUpdate Failed with code {process.returncode}.\n")
+                log_text.tag_add("fail", "1.0", "end")
+                log_text.tag_config("fail", foreground="red")
 
-        self.root.after(100, run_update)
+        except Exception as e:
+            log_text.insert(tk.END, f"\n\nError: {str(e)}\n")
+            log_text.tag_add("error", "1.0", "end")
+            log_text.tag_config("error", foreground="red")
 
-def open_link(self, url):
-        subprocess.run(["xdg-open", url])
+        # Stop the progress bar and update the UI
+        progress.stop()
+        progress.place_forget()
+
+        # Add a close button and a restart message
+        ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
+
+        tk.Label(update_win, text="Please restart the program to complete the update.", font=("Arial", 10, "italic")).pack(pady=10)
+
+    # Run the update in a separate thread to keep the UI responsive
+    self.root.after(100, run_update)
+
 
 
 
