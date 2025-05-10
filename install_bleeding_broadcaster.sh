@@ -8,17 +8,21 @@ ICON_NAME="BleedingBroadcaster.png"
 SCRIPT_NAME="bleeding_broadcaster.py"
 DESKTOP_ENTRY="BleedingBroadcaster.desktop"
 INSTALL_DIR="$HOME/BleedingBroadcaster"
+REPO_URL="https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"
 
-# Create install directory
-mkdir -p "$INSTALL_DIR"
-
-# Copy the Python script and icon
-cp "$SCRIPT_NAME" "$INSTALL_DIR/"
-cp "$ICON_NAME" "$INSTALL_DIR/"
+# Clone or update repo
+if [ -d "$INSTALL_DIR/.git" ]; then
+  echo "Updating existing repo..."
+  cd "$INSTALL_DIR"
+  git pull
+else
+  echo "Cloning fresh repo..."
+  git clone "$REPO_URL" "$INSTALL_DIR"
+fi
 
 # Update package list and install dependencies
 sudo apt update
-sudo apt install -y sox libsox-fmt-all python3 python3-pip python3-tk
+sudo apt install -y sox libsox-fmt-all python3 python3-pip python3-tk git
 pip3 install pygame
 
 # Create desktop entry
