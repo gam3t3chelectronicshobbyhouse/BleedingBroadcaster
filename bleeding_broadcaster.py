@@ -63,27 +63,14 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
         ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
 
-        # Frequency frame with AM/FM slider and broadcast option
         freq_frame = tk.LabelFrame(self.root, text="Broadcast Frequency (GPIO Pin 4)", padx=10, pady=10)
         freq_frame.pack(padx=10, pady=5, fill="x")
 
-        self.freq_slider = tk.Scale(freq_frame, from_=20, to=80000, orient="horizontal", label="Frequency (Hz)", command=self.update_frequency)
+        self.freq_slider = tk.Scale(freq_frame, from_=20, to=80000, orient="horizontal",
+                                    label="Frequency (Hz)", command=self.update_frequency)
         self.freq_slider.set(self.selected_frequency)
         self.freq_slider.pack(fill="x")
 
-        # AM/FM mode selection
-        self.fm_am_mode = tk.StringVar(value="AM")
-        self.fm_am_radio_am = ttk.Radiobutton(freq_frame, text="AM", variable=self.fm_am_mode, value="AM")
-        self.fm_am_radio_fm = ttk.Radiobutton(freq_frame, text="FM", variable=self.fm_am_mode, value="FM")
-        self.fm_am_radio_am.pack(side="left", padx=10)
-        self.fm_am_radio_fm.pack(side="left", padx=10)
-
-        # Checkbox for PiAM/PiFM broadcast selection
-        self.broadcast_check = tk.BooleanVar()
-        self.broadcast_checkbutton = ttk.Checkbutton(freq_frame, text="Enable PiAM/PiFM Broadcast", variable=self.broadcast_check)
-        self.broadcast_checkbutton.pack(side="left", padx=10)
-
-        # Playlist frame
         playlist_frame = tk.LabelFrame(self.root, text="Playlist", padx=10, pady=10)
         playlist_frame.pack(padx=10, pady=5, fill="both", expand=True)
 
@@ -100,9 +87,12 @@ class BroadcasterGUI:
         bottom_frame = tk.Frame(self.root)
         bottom_frame.pack(side="bottom", fill="x", pady=10)
 
-        ttk.Button(bottom_frame, text="YouTube", command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
-        ttk.Button(bottom_frame, text="Instagram", command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
-        ttk.Button(bottom_frame, text="Donate ❤️", command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
+        ttk.Button(bottom_frame, text="YouTube",
+                   command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
+        ttk.Button(bottom_frame, text="Instagram",
+                   command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
+        ttk.Button(bottom_frame, text="Donate ❤️",
+                   command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
         ttk.Button(bottom_frame, text="Update", command=self.run_update_popup).pack(side="right", padx=10)
 
     def update_frequency(self, val):
