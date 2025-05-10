@@ -1,39 +1,53 @@
 #!/bin/bash
 
-echo "=============================="
-echo " Bleeding Broadcaster Updater"
-echo "=============================="
-echo ""
+# Directory where the application files are stored
+APP_DIR="/path/to/your/application"  # Replace with your actual app directory
+GIT_REPO="https://github.com/yourusername/yourrepo.git"  # Replace with your actual GitHub repository
 
-# Change to the script's directory (your project root)
-cd "$(dirname "$0")" || {
-    echo "Failed to enter script directory. Aborting."
+# Function to check if git is installed
+check_git() {
+    if ! command -v git &>/dev/null; then
+        echo "Git not found, please install Git first."
+        exit 1
+    fi
+}
+
+# Function to pull the latest changes from the repository
+git_pull() {
+    echo "Fetching the latest updates from the repository..."
+    cd "$APP_DIR" || exit 1
+    git fetch --all
+    git reset --hard origin/main  # Assuming 'main' is your branch
+}
+
+# Function to handle downloading and replacing files
+download_files() {
+    echo "Downloading new files from the GitHub repository..."
+    git_pull
+
+    # Assuming all files are in the repo and will be overwritten
+    echo "Replacing old files with the new ones..."
+    git checkout .
+}
+
+# Function to restart the application if required
+restart_application() {
+    echo "Update complete! Restarting the application..."
+    sudo systemctl restart bleeding_broadcaster  # Example: Adjust for your system's init system or method
+}
+
+# Function to handle errors and clean exit
+handle_error() {
+    echo "An error occurred during the update process. Please check the logs and try again."
     exit 1
 }
 
-# Check if it's a git repository
-if [ ! -d .git ]; then
-    echo "Error: This directory is not a Git repository."
-    echo "Please clone the project using Git first."
-    exit 1
-fi
-
-# Optional: Backup current files
-backup_dir="backup_$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$backup_dir"
-cp -r *.py *.sh "$backup_dir" 2>/dev/null
-
-echo "Backup created at: $backup_dir"
-echo ""
-
-# Pull updates from GitHub
-echo "Fetching latest updates..."
-git reset --hard HEAD
-git pull origin main || {
-    echo "Failed to pull from GitHub."
-    exit 1
+# Main update script
+main() {
+    check_git
+    echo "Starting update process..."
+    download_files || handle_error
+    restart_application
 }
 
-echo ""
-echo "✅ Update complete."
-echo "Please restart the Bleeding Broadcaster app to apply changes."
+main
