@@ -6,9 +6,7 @@ import pygame
 import subprocess
 import RPi.GPIO as GPIO
 from tkinter import PhotoImage
-
-# Assuming FMTransmitter and AMTransmitter are defined in fm_am_transmitter.py
-from fm_am_transmitter import FMTransmitter, AMTransmitter 
+from fm_am_transmitter import FMTransmitter, AMTransmitter
 
 APP_NAME = "Bleeding Broadcaster"
 ICON_FILE = "icon.png"
@@ -18,7 +16,6 @@ PLAYLIST_DIR = "playlists"
 
 pygame.mixer.init()
 
-# Setup GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(4, GPIO.OUT)
 
@@ -35,25 +32,28 @@ class BroadcasterGUI:
         self.loop = tk.BooleanVar()
         self.now_playing = tk.StringVar(value="Nothing Playing")
 
-        # Default frequency in Hz for FM and AM
-        self.selected_frequency = 100000  # Default FM frequency in Hz
-        self.selected_mode = "FM"  # Start with FM mode
-        self.unit_display = "Hz"  # Default unit display
+        self.selected_mode = tk.StringVar(value="FM")
+        self.unit_display = "Hz"
         self.transmitter = None
 
-        # Initializing the appropriate transmitter (FM by default)
-        self.setup_transmitter()
+        # Frequencies
+        self.fm_frequency = 100000000  # 100 MHz
+        self.am_frequency = 1000000    # 1 MHz
 
+        self.setup_transmitter()
         self.setup_ui()
 
         os.makedirs(AUDIO_DIR, exist_ok=True)
         os.makedirs(PLAYLIST_DIR, exist_ok=True)
 
     def setup_transmitter(self):
-        if self.selected_mode == "FM":
-            self.transmitter = FMTransmitter(4, self.selected_frequency)
-        elif self.selected_mode == "AM":
-            self.transmitter = AMTransmitter(4, self.selected_frequency)
+        if self.transmitter:
+            self.transmitter.stop()
+
+        if self.selected_mode.get() == "FM":
+            self.transmitter = FMTransmitter(4, self.fm_frequency)
+        else:
+            self.transmitter = AMTransmitter(4, self.am_frequency)
 
     def setup_ui(self):
         top_frame = tk.Frame(self.root)
@@ -77,27 +77,37 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
         ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
 
-        # AM/FM Mode Selector
-        mode_frame = tk.LabelFrame(self.root, text="Broadcast Mode", padx=10, pady=10)
-        mode_frame.pack(padx=10, pady=5, fill="x")
+        # Mode select
+        mode_frame = tk.LabelFrame(self.root, text="Broadcast Mode")
+        mode_frame.pack(fill="x", padx=10, pady=5)
 
-        self.fm_rb = ttk.Radiobutton(mode_frame, text="FM", value="FM", variable=self.selected_mode,
-                                      command=self.update_mode).pack(side="left")
-        self.am_rb = ttk.Radiobutton(mode_frame, text="AM", value="AM", variable=self.selected_mode,
-                                      command=self.update_mode).pack(side="left")
+        ttk.Radiobutton(mode_frame, text="FM", value="FM", variable=self.selected_mode,
+                        command=self.update_mode).pack(side="left")
+        ttk.Radiobutton(mode_frame, text="AM", value="AM", variable=self.selected_mode,
+                        command=self.update_mode).pack(side="left")
 
-        # Frequency slider with the ability to choose units (Hz or AM/FM Bands)
+        # Frequency sliders
         freq_frame = tk.LabelFrame(self.root, text="Broadcast Frequency", padx=10, pady=10)
-        freq_frame.pack(padx=10, pady=5, fill="x")
+        freq_frame.pack(fill="x", padx=10, pady=5)
 
-        self.freq_slider = tk.Scale(freq_frame, from_=20, to=80000, orient="horizontal",
-                                     label="Frequency (Hz)", command=self.update_frequency)
-        self.freq_slider.set(self.selected_frequency)
-        self.freq_slider.pack(fill="x")
+        self.fm_slider = tk.Scale(freq_frame, from_=88000000, to=108000000,
+                                  label="FM Frequency (Hz)", orient="horizontal",
+                                  command=self.update_fm_frequency)
+        self.fm_slider.set(self.fm_frequency)
+        self.fm_slider.pack(fill="x")
+
+        self.am_slider = tk.Scale(freq_frame, from_=520000, to=1710000,
+                                  label="AM Frequency (Hz)", orient="horizontal",
+                                  command=self.update_am_frequency)
+        self.am_slider.set(self.am_frequency)
+        self.am_slider.pack(fill="x")
 
         self.unit_toggle = ttk.Checkbutton(self.root, text="Display in AM/FM Bands", command=self.toggle_unit)
-        self.unit_toggle.pack(pady=10)
+        self.unit_toggle.pack(pady=5)
 
+        self.update_slider_state()
+
+        # Playlist area
         playlist_frame = tk.LabelFrame(self.root, text="Playlist", padx=10, pady=10)
         playlist_frame.pack(padx=10, pady=5, fill="both", expand=True)
 
@@ -122,49 +132,58 @@ class BroadcasterGUI:
                    command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
         ttk.Button(bottom_frame, text="Update", command=self.run_update_popup).pack(side="right", padx=10)
 
+    def update_slider_state(self):
+        if self.selected_mode.get() == "FM":
+            self.fm_slider.config(state="normal")
+            self.am_slider.config(state="disabled")
+        else:
+            self.am_slider.config(state="normal")
+            self.fm_slider.config(state="disabled")
+
     def update_mode(self):
-        """Update mode (AM or FM) and update transmitter"""
-        self.selected_frequency = 100000  # Reset to default frequency on mode change
         self.setup_transmitter()
-        self.update_frequency(self.selected_frequency)
+        self.update_slider_state()
+        self.update_frequency_display()
+
+    def update_fm_frequency(self, val):
+        self.fm_frequency = int(val)
+        if self.selected_mode.get() == "FM":
+            self.transmitter.set_frequency(self.fm_frequency)
+        self.update_frequency_display()
+
+    def update_am_frequency(self, val):
+        self.am_frequency = int(val)
+        if self.selected_mode.get() == "AM":
+            self.transmitter.set_frequency(self.am_frequency)
+        self.update_frequency_display()
+
+    def update_frequency_display(self):
+        freq = self.fm_frequency if self.selected_mode.get() == "FM" else self.am_frequency
+        if self.unit_display == "Hz":
+            self.now_playing.set(f"Broadcasting at: {freq} Hz")
+        else:
+            if self.selected_mode.get() == "FM":
+                band = freq / 1_000_000
+                self.now_playing.set(f"FM Band: {band:.1f} MHz")
+            else:
+                band = freq / 1_000
+                self.now_playing.set(f"AM Band: {band:.0f} kHz")
 
     def toggle_unit(self):
-        """Toggle between Hz and AM/FM band display."""
-        if self.unit_display == "Hz":
-            self.unit_display = "AM/FM Bands"
-        else:
-            self.unit_display = "Hz"
-        self.update_frequency(self.selected_frequency)
-
-    def update_frequency(self, val):
-        """Update frequency and display unit (Hz or AM/FM Bands)."""
-        self.selected_frequency = int(val)
-        if self.unit_display == "Hz":
-            self.now_playing.set(f"Broadcasting at: {self.selected_frequency} Hz")
-        else:
-            # Convert frequency to AM/FM Band range (example conversion, adjust as needed)
-            if self.selected_mode == "FM":
-                fm_band = (self.selected_frequency - 88000) // 10  # Example conversion
-                self.now_playing.set(f"FM Band: {fm_band} MHz")
-            elif self.selected_mode == "AM":
-                am_band = (self.selected_frequency - 530000) // 10  # Example conversion
-                self.now_playing.set(f"AM Band: {am_band} kHz")
-        if hasattr(self.transmitter, 'set_frequency'):
-            self.transmitter.set_frequency(self.selected_frequency)
+        self.unit_display = "AM/FM Bands" if self.unit_display == "Hz" else "Hz"
+        self.update_frequency_display()
 
     def play_tone(self):
-        self.now_playing.set(f"Now Playing: Test Tone ({self.selected_frequency} Hz)")
-        if not self.transmitter.pwm_started:
-            self.transmitter.start()
+        self.transmitter.start()
+        self.update_frequency_display()
 
     def sweep_tone(self):
-        self.now_playing.set("Now Playing: Sweep Tone")
+        self.now_playing.set("Now Playing: Sweep Tone (Coming Soon)")
 
     def stop_audio_and_tone(self):
         pygame.mixer.music.stop()
         self.now_playing.set("Nothing Playing")
-        if self.transmitter.pwm_started:
-            self.transmitter.stop()
+        self.transmitter.stop()
 
     def play_audio(self):
         if not self.audio_files:
@@ -225,17 +244,17 @@ class BroadcasterGUI:
 
         def run_update():
             try:
-                process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"],
+                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 for line in process.stdout:
                     log_text.insert(tk.END, line)
                     log_text.see(tk.END)
                 process.wait()
-                if process.returncode == 0:
-                    log_text.insert(tk.END, "\nUpdate Completed.\n")
-                else:
-                    log_text.insert(tk.END, f"\nUpdate Failed with code {process.returncode}.\n")
+                log_text.insert(tk.END, "\nUpdate Completed.\n" if process.returncode == 0
+                                else f"\nUpdate Failed with code {process.returncode}.\n")
             except Exception as e:
                 log_text.insert(tk.END, f"\nError: {str(e)}\n")
+
             ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
             tk.Label(update_win, text="Please restart the program.", font=("Arial", 10, "italic")).pack(pady=2)
 
@@ -244,8 +263,6 @@ class BroadcasterGUI:
     def open_link(self, url):
         subprocess.run(["xdg-open", url])
 
-
-# Main
 if __name__ == "__main__":
     root = tk.Tk()
     gui = BroadcasterGUI(root)
