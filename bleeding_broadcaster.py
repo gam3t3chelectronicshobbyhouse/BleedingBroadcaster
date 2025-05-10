@@ -222,7 +222,7 @@ class BroadcasterGUI:
         close_button = ttk.Button(update_win, text="Close", command=update_win.destroy, state="disabled")
         close_button.pack(pady=10)
 
-         def run_update_popup(self):
+        def run_update_popup(self):
         update_win = tk.Toplevel(self.root)
         update_win.title("Updating...")
         update_win.geometry("400x300")
