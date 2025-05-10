@@ -8,35 +8,36 @@ import RPi.GPIO as GPIO
 from tkinter import PhotoImage
 
 APP_NAME = "Bleeding Broadcaster"
-ICON_FILE = "icon.png"  # Use a smaller icon image (icon.png) for the GUI
+ICON_FILE = "icon.png"
+BANNER_FILE = "BleedingBroadcaster.png"
 AUDIO_DIR = "audio"
 PLAYLIST_DIR = "playlists"
 
-# Initialize pygame mixer
 pygame.mixer.init()
 
 # Setup GPIO
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(4, GPIO.OUT)  # Set GPIO pin 4 as an output
+GPIO.setup(4, GPIO.OUT)
 
 class BroadcasterGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(APP_NAME)
-        self.root.geometry("800x500")
+        self.root.geometry("800x550")
         if os.path.exists(ICON_FILE):
-            self.root.iconphoto(False, tk.PhotoImage(file=ICON_FILE))  # Set the window icon
+            self.root.iconphoto(False, tk.PhotoImage(file=ICON_FILE))
 
         self.audio_files = []
         self.current_index = 0
         self.loop = tk.BooleanVar()
         self.now_playing = tk.StringVar(value="Nothing Playing")
 
-        self.selected_frequency = 1000  # Default frequency (Hz)
+        self.selected_frequency = 1000
+        self.pwm = GPIO.PWM(4, self.selected_frequency)
+        self.pwm_started = False
 
         self.setup_ui()
 
-        # Create folders if not present
         os.makedirs(AUDIO_DIR, exist_ok=True)
         os.makedirs(PLAYLIST_DIR, exist_ok=True)
 
@@ -44,22 +45,17 @@ class BroadcasterGUI:
         top_frame = tk.Frame(self.root)
         top_frame.pack(pady=10)
 
-        # Title and Graphic Display (Resized to banner size)
-        title_label = tk.Label(top_frame, text="Bleeding Broadcaster by Gam3t3ch Electronics", font=("Arial", 16, "bold"))
-        title_label.pack()
+        tk.Label(top_frame, text="Bleeding Broadcaster by Gam3t3ch Electronics", font=("Arial", 16, "bold")).pack()
 
-        # Resize the graphic to a smaller banner size (e.g., 200x60)
-        self.image = PhotoImage(file=ICON_FILE).subsample(2)  # Resize it by a factor of 2 (adjust this as needed)
-        image_label = tk.Label(top_frame, image=self.image)
-        image_label.pack(pady=5)
+        if os.path.exists(BANNER_FILE):
+            self.banner_image = PhotoImage(file=BANNER_FILE).subsample(3)
+            tk.Label(top_frame, image=self.banner_image).pack(pady=5)
 
-        self.now_playing_label = tk.Label(top_frame, textvariable=self.now_playing, font=("Arial", 14))
-        self.now_playing_label.pack()
+        tk.Label(top_frame, textvariable=self.now_playing, font=("Arial", 14)).pack()
 
         control_frame = tk.Frame(self.root)
         control_frame.pack(pady=10)
 
-        # Tone Generator and Sweep buttons
         ttk.Button(control_frame, text="Play Tone", command=self.play_tone).grid(row=0, column=0, padx=5)
         ttk.Button(control_frame, text="Sweep Tone", command=self.sweep_tone).grid(row=0, column=1, padx=5)
         ttk.Button(control_frame, text="Play", command=self.play_audio).grid(row=0, column=2, padx=5)
@@ -67,18 +63,18 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
         ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
 
-        # Frequency Control for GPIO Pin 4
         freq_frame = tk.LabelFrame(self.root, text="Broadcast Frequency (GPIO Pin 4)", padx=10, pady=10)
-        freq_frame.pack(padx=10, pady=10, fill="both", expand=True)
+        freq_frame.pack(padx=10, pady=5, fill="x")
 
-        self.freq_slider = tk.Scale(freq_frame, from_=20, to=80000, orient="horizontal", label="Frequency (Hz)", command=self.update_frequency)
-        self.freq_slider.set(self.selected_frequency)  # Set default value to 1000 Hz
-        self.freq_slider.pack(fill="both", expand=True)
+        self.freq_slider = tk.Scale(freq_frame, from_=20, to=80000, orient="horizontal",
+                                    label="Frequency (Hz)", command=self.update_frequency)
+        self.freq_slider.set(self.selected_frequency)
+        self.freq_slider.pack(fill="x")
 
         playlist_frame = tk.LabelFrame(self.root, text="Playlist", padx=10, pady=10)
-        playlist_frame.pack(padx=10, pady=10, fill="both", expand=True)
+        playlist_frame.pack(padx=10, pady=5, fill="both", expand=True)
 
-        self.playlist_box = tk.Listbox(playlist_frame, height=10)
+        self.playlist_box = tk.Listbox(playlist_frame, height=8)
         self.playlist_box.pack(fill="both", expand=True)
 
         playlist_btn_frame = tk.Frame(self.root)
@@ -91,28 +87,36 @@ class BroadcasterGUI:
         bottom_frame = tk.Frame(self.root)
         bottom_frame.pack(side="bottom", fill="x", pady=10)
 
-        # Social + Donate Buttons
-        ttk.Button(bottom_frame, text="YouTube", command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
-        ttk.Button(bottom_frame, text="Instagram", command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
-        ttk.Button(bottom_frame, text="Donate ❤️", command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
-
-        # Add Update button
-        ttk.Button(bottom_frame, text="Update", command=self.check_for_update).pack(side="right", padx=10)
+        ttk.Button(bottom_frame, text="YouTube",
+                   command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
+        ttk.Button(bottom_frame, text="Instagram",
+                   command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
+        ttk.Button(bottom_frame, text="Donate ❤️",
+                   command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
+        ttk.Button(bottom_frame, text="Update", command=self.run_update_popup).pack(side="right", padx=10)
 
     def update_frequency(self, val):
-        self.selected_frequency = int(val)  # Update the selected frequency (in Hz)
+        self.selected_frequency = int(val)
         self.now_playing.set(f"Broadcasting at: {self.selected_frequency} Hz")
+        if self.pwm_started:
+            self.pwm.ChangeFrequency(self.selected_frequency)
 
-    def check_for_update(self):
-        # This function can be used to check for any software updates
-        messagebox.showinfo("Update", "Checking for software updates... (This is a placeholder)")
+    def play_tone(self):
+        self.now_playing.set(f"Now Playing: Test Tone ({self.selected_frequency} Hz)")
+        if not self.pwm_started:
+            self.pwm.start(50)
+            self.pwm_started = True
 
-    def add_files(self):
-        files = filedialog.askopenfilenames(title="Select Audio Files", filetypes=[("Audio", "*.mp3 *.wav")])
-        for file in files:
-            if file not in self.audio_files:
-                self.audio_files.append(file)
-                self.playlist_box.insert(tk.END, os.path.basename(file))
+    def sweep_tone(self):
+        self.now_playing.set("Now Playing: Sweep Tone")
+        # Placeholder: implement actual sweep logic with SoX or PWM sweeping if desired
+
+    def stop_audio_and_tone(self):
+        pygame.mixer.music.stop()
+        self.now_playing.set("Nothing Playing")
+        if self.pwm_started:
+            self.pwm.stop()
+            self.pwm_started = False
 
     def play_audio(self):
         if not self.audio_files:
@@ -129,12 +133,6 @@ class BroadcasterGUI:
         if pygame.mixer.music.get_busy():
             pygame.mixer.music.pause()
 
-    def stop_audio_and_tone(self):
-        pygame.mixer.music.stop()
-        self.now_playing.set("Nothing Playing")
-        # Stop any subprocess test tones or sweeps here
-        # Example: subprocess.call(["pkill", "sox"])
-
     def check_audio_end(self):
         if not pygame.mixer.music.get_busy():
             if self.loop.get():
@@ -142,6 +140,13 @@ class BroadcasterGUI:
                 self.play_audio()
         else:
             self.root.after(1000, self.check_audio_end)
+
+    def add_files(self):
+        files = filedialog.askopenfilenames(title="Select Audio Files", filetypes=[("Audio", "*.mp3 *.wav")])
+        for file in files:
+            if file not in self.audio_files:
+                self.audio_files.append(file)
+                self.playlist_box.insert(tk.END, os.path.basename(file))
 
     def save_playlist(self):
         file = filedialog.asksaveasfilename(initialdir=PLAYLIST_DIR, defaultextension=".txt",
@@ -163,22 +168,35 @@ class BroadcasterGUI:
                         self.audio_files.append(path)
                         self.playlist_box.insert(tk.END, os.path.basename(path))
 
-    def play_tone(self):
-        # Tone generation logic placeholder (use SoX or another library here)
-        self.now_playing.set(f"Now Playing: Test Tone ({self.selected_frequency} Hz)")
-        # Example command to start test tone (replace with actual implementation)
-        # subprocess.call(["sox", "-n", "-r", "44100", "-c", "2", "test_tone.wav", "sine", str(self.selected_frequency)])
+    def run_update_popup(self):
+        update_win = tk.Toplevel(self.root)
+        update_win.title("Updating...")
+        update_win.geometry("400x300")
+        log_text = tk.Text(update_win, wrap="word")
+        log_text.pack(expand=True, fill="both", padx=10, pady=10)
 
-    def sweep_tone(self):
-        # Sweep tone generation logic placeholder
-        self.now_playing.set("Now Playing: Sweep Tone")
-        # Example command to start sweep tone (replace with actual implementation)
-        # subprocess.call(["sox", "-n", "-r", "44100", "-c", "2", "sweep_tone.wav", "synth", "1", "sine", "1-20000"])
-    
+        def run_update():
+            try:
+                process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                for line in process.stdout:
+                    log_text.insert(tk.END, line)
+                    log_text.see(tk.END)
+                process.wait()
+                if process.returncode == 0:
+                    log_text.insert(tk.END, "\nUpdate Completed.\n")
+                else:
+                    log_text.insert(tk.END, f"\nUpdate Failed with code {process.returncode}.\n")
+            except Exception as e:
+                log_text.insert(tk.END, f"\nError: {str(e)}\n")
+            ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
+            tk.Label(update_win, text="Please restart the program.", font=("Arial", 10, "italic")).pack(pady=2)
+
+        self.root.after(100, run_update)
+
     def open_link(self, url):
         subprocess.run(["xdg-open", url])
 
-# Main loop
+# Main
 if __name__ == "__main__":
     root = tk.Tk()
     gui = BroadcasterGUI(root)
