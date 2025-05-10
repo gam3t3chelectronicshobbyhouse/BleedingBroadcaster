@@ -33,9 +33,9 @@ echo "Creating desktop shortcut..."
 cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
 Name=Bleeding Broadcaster
-Comment=Broadcast AM/FM audio for testing
+Comment=Broadcast radio
 Exec=python3 $INSTALL_DIR/bleeding_broadcaster.py
-Icon=$INSTALL_DIR/$ICON_NAME
+Icon=$INSTALL_DIR/icon.png
 Terminal=false
 Type=Application
 Categories=Audio;Utility;
@@ -43,10 +43,6 @@ EOF
 
 chmod +x "$DESKTOP_FILE"
 
-# Ensure icon is readable
-if [ -f "$ICON_PATH" ]; then
-  xdg-icon-resource install --novendor --size 64 "$ICON_PATH" "bleeding-broadcaster"
-fi
 
 echo "Installation complete."
 echo "You can now launch Bleeding Broadcaster from your Desktop."
