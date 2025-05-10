@@ -34,8 +34,8 @@ cat <<EOF > "$DESKTOP_FILE"
 Version=1.0
 Name=Bleeding Broadcaster
 Comment=Start Bleeding Broadcaster
-Exec=lxterminal -e $PYTHON_EXEC $MAIN_SCRIPT
-Icon=$ICON_PATH
+Exec=lxterminal -e /home/pi/BleedingBroadcaster/start_bleeding_broadcaster.sh
+Icon=/home/pi/BleedingBroadcaster/icon.png
 Terminal=false
 Type=Application
 Categories=Utility;
