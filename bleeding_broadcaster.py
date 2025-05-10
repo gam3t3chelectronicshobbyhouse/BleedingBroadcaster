@@ -224,7 +224,7 @@ class BroadcasterGUI:
 
         def update_process():
             try:
-                process = subprocess.Popen(["bash", ""$HOME/BleedingBroadcaster/update_bleeding_broadcaster.sh"],
+                process = subprocess.Popen(["bash", "$HOME/BleedingBroadcaster/update_bleeding_broadcaster.sh"],
                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 for line in process.stdout:
                     log_text.insert(tk.END, line)
