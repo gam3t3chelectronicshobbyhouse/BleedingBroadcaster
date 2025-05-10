@@ -34,4 +34,4 @@ EOF
 chmod +x "$DESKTOP_FILE"
 
 # Launch application
-python3 "$INSTALL_DIR/bleeding_broadcaster_gui.py"
+python3 "$INSTALL_DIR/bleeding_broadcaster.py"
