@@ -1,132 +1,115 @@
-# bleeding_broadcaster.py
-# GUI for Bleeding Broadcaster by Gam3t3ch Electronics
-
-import os
-import subprocess
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import messagebox, filedialog
+import subprocess
+import os
 import pygame
+import threading
+import requests
+import time
 
-# Initialize pygame mixer
-pygame.mixer.init()
+git_repo_url = "https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"
+install_dir = os.path.expanduser("~/BleedingBroadcaster")
 
-# Globals
-playlist = []
-current_index = 0
-loop_playlist = tk.BooleanVar()
+class BleedingBroadcasterApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Bleeding Broadcaster by Gam3t3ch Electronics")
+        self.root.geometry("800x600")
+        self.playlist = []
+        self.current_index = 0
+        self.loop_playlist = tk.BooleanVar(value=False)
 
-# GUI Setup
-root = tk.Tk()
-root.title("Bleeding Broadcaster - by Gam3t3ch Electronics")
-root.geometry("800x600")
-root.iconphoto(False, tk.PhotoImage(file="BleedingBroadcaster.png"))
+        pygame.mixer.init()
 
-# Tone Generator Frame
-tone_frame = ttk.LabelFrame(root, text="Test Tone Generator")
-tone_frame.pack(fill="x", padx=10, pady=10)
+        self.setup_ui()
 
-waveform_var = tk.StringVar(value="sine")
-freq_var = tk.StringVar(value="1000")
-duration_var = tk.StringVar(value="5")
+    def setup_ui(self):
+        self.icon = tk.PhotoImage(file=os.path.join(install_dir, "BleedingBroadcaster.png"))
+        self.root.iconphoto(False, self.icon)
 
-waveform_menu = ttk.Combobox(tone_frame, textvariable=waveform_var, values=["sine", "square", "triangle", "noise"])
-wavelength_label = ttk.Label(tone_frame, text="Frequency (Hz):")
-waveform_menu.grid(row=0, column=0, padx=5, pady=5)
-wavelength_label.grid(row=0, column=1)
-tk.Entry(tone_frame, textvariable=freq_var, width=10).grid(row=0, column=2)
-tk.Label(tone_frame, text="Duration (s):").grid(row=0, column=3)
-tk.Entry(tone_frame, textvariable=duration_var, width=5).grid(row=0, column=4)
+        tk.Label(self.root, text="Audio Playlist").pack()
+        self.listbox = tk.Listbox(self.root, width=100, height=10)
+        self.listbox.pack(pady=10)
 
-# Sweep Tone Controls
-sweep_frame = ttk.LabelFrame(root, text="Auto Sweep Generator")
-sweep_frame.pack(fill="x", padx=10, pady=10)
+        controls = tk.Frame(self.root)
+        controls.pack()
 
-sweep_start_var = tk.StringVar(value="100")
-sweep_end_var = tk.StringVar(value="10000")
-sweep_duration_var = tk.StringVar(value="10")
+        tk.Button(controls, text="Add File", command=self.add_file).pack(side=tk.LEFT)
+        tk.Button(controls, text="Add Folder", command=self.add_folder).pack(side=tk.LEFT)
+        tk.Button(controls, text="Play", command=self.play_current).pack(side=tk.LEFT)
+        tk.Button(controls, text="Next", command=self.play_next).pack(side=tk.LEFT)
+        tk.Checkbutton(controls, text="Loop Playlist", variable=self.loop_playlist).pack(side=tk.LEFT)
 
-sweep_controls = [
-    ("Start Freq", sweep_start_var),
-    ("End Freq", sweep_end_var),
-    ("Duration", sweep_duration_var)
-]
+        tk.Button(self.root, text="Generate Test Tone", command=self.generate_test_tone).pack(pady=10)
+        tk.Button(self.root, text="Start Auto Sweep", command=self.auto_sweep).pack(pady=10)
 
-for idx, (label, var) in enumerate(sweep_controls):
-    ttk.Label(sweep_frame, text=label).grid(row=0, column=idx*2)
-    tk.Entry(sweep_frame, textvariable=var, width=8).grid(row=0, column=idx*2+1)
+        tk.Button(self.root, text="Check for Updates", command=self.check_for_updates).pack(pady=10)
 
-# Playlist Frame
-playlist_frame = ttk.LabelFrame(root, text="Broadcast Playlist")
-playlist_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    def add_file(self):
+        files = filedialog.askopenfilenames(filetypes=[("Audio Files", "*.wav *.mp3")])
+        for f in files:
+            self.playlist.append(f)
+            self.listbox.insert(tk.END, os.path.basename(f))
 
-playlist_box = tk.Listbox(playlist_frame)
-playlist_box.pack(fill="both", expand=True, padx=5, pady=5)
+    def add_folder(self):
+        folder = filedialog.askdirectory()
+        if folder:
+            for file in os.listdir(folder):
+                if file.lower().endswith((".wav", ".mp3")):
+                    path = os.path.join(folder, file)
+                    self.playlist.append(path)
+                    self.listbox.insert(tk.END, file)
 
-# Command Functions
-def generate_tone():
-    filename = "tone.wav"
-    subprocess.call(['sox', '-n', '-r', '44100', '-c', '1', filename, 'synth', duration_var.get(), waveform_var.get(), freq_var.get()])
-    messagebox.showinfo("Done", f"Tone generated: {filename}")
+    def play_current(self):
+        if self.playlist:
+            try:
+                pygame.mixer.music.load(self.playlist[self.current_index])
+                pygame.mixer.music.play()
+                pygame.mixer.music.set_endevent(pygame.USEREVENT)
+                self.root.after(1000, self.check_music_end)
+            except Exception as e:
+                messagebox.showerror("Playback Error", str(e))
 
-def generate_sweep():
-    filename = "sweep.wav"
-    freq_range = f"{sweep_start_var.get()}-{sweep_end_var.get()}"
-    subprocess.call(['sox', '-n', '-r', '44100', '-c', '1', filename, 'synth', sweep_duration_var.get(), 'sine', freq_range])
-    messagebox.showinfo("Done", f"Sweep generated: {filename}")
+    def play_next(self):
+        self.current_index += 1
+        if self.current_index >= len(self.playlist):
+            if self.loop_playlist.get():
+                self.current_index = 0
+            else:
+                return
+        self.play_current()
 
-def preview_file(filename):
-    pygame.mixer.music.load(filename)
-    pygame.mixer.music.play()
+    def check_music_end(self):
+        if not pygame.mixer.music.get_busy():
+            self.play_next()
+        else:
+            self.root.after(1000, self.check_music_end)
 
-def add_file():
-    file = filedialog.askopenfilename(filetypes=[("Audio Files", "*.wav *.mp3")])
-    if file:
-        playlist.append(file)
-        playlist_box.insert(tk.END, os.path.basename(file))
+    def generate_test_tone(self):
+        subprocess.Popen(["play", "-n", "synth", "5", "sine", "1000"])
 
-def add_folder():
-    folder = filedialog.askdirectory()
-    if folder:
-        for file in os.listdir(folder):
-            if file.endswith('.wav') or file.endswith('.mp3'):
-                full_path = os.path.join(folder, file)
-                playlist.append(full_path)
-                playlist_box.insert(tk.END, file)
+    def auto_sweep(self):
+        subprocess.Popen(["play", "-n", "synth", "10", "sine", "300-3000"])
 
-def play_selected():
-    global current_index
-    try:
-        current_index = playlist_box.curselection()[0]
-        preview_file(playlist[current_index])
-    except:
-        messagebox.showwarning("Select File", "Select a file from the playlist")
+    def check_for_updates(self):
+        def _run_update():
+            current_hash = subprocess.getoutput(f"cd {install_dir} && git rev-parse HEAD")
+            remote_hash = subprocess.getoutput(f"cd {install_dir} && git fetch origin && git rev-parse origin/main")
 
-def next_track():
-    global current_index
-    if current_index + 1 < len(playlist):
-        current_index += 1
-        preview_file(playlist[current_index])
+            if current_hash != remote_hash:
+                answer = messagebox.askyesno("Update Available", "A new update is available.\n\nApply update now?")
+                if answer:
+                    subprocess.call(["bash", os.path.join(install_dir, "update_bleeding_broadcaster.sh")])
+                    msg = messagebox.askyesno("Updated", "Update complete. Restart application now?")
+                    if msg:
+                        self.root.destroy()
+                        os.execv(__file__, ["python3"] + sys.argv)
+            else:
+                messagebox.showinfo("No Update", "You already have the latest version.")
 
-def toggle_loop():
-    pygame.mixer.music.set_endevent(pygame.USEREVENT)
-    if loop_playlist.get():
-        pygame.mixer.music.play(-1)
-    else:
-        pygame.mixer.music.play()
+        threading.Thread(target=_run_update).start()
 
-def stop_playback():
-    pygame.mixer.music.stop()
-
-# Buttons
-tk.Button(tone_frame, text="Generate Tone", command=generate_tone).grid(row=0, column=5, padx=5)
-tk.Button(tone_frame, text="Preview", command=lambda: preview_file("tone.wav")).grid(row=0, column=6)
-tk.Button(sweep_frame, text="Generate Sweep", command=generate_sweep).grid(row=0, column=6, padx=5)
-tk.Button(sweep_frame, text="Preview Sweep", command=lambda: preview_file("sweep.wav")).grid(row=0, column=7)
-tk.Button(root, text="Add File", command=add_file).pack(side="left", padx=5)
-tk.Button(root, text="Add Folder", command=add_folder).pack(side="left", padx=5)
-tk.Button(root, text="Play Selected", command=play_selected).pack(side="left", padx=5)
-tk.Button(root, text="Next Track", command=next_track).pack(side="left", padx=5)
-tk.Checkbutton(root, text="Loop Playlist", variable=loop_playlist, command=toggle_loop).pack(side="left", padx=5)
-tk.Button(root, text="Stop", command=stop_playback).pack(side="left", padx=5)
-
-root.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = BleedingBroadcasterApp(root)
+    root.mainloop()
