@@ -96,9 +96,16 @@ class BroadcasterGUI:
         ttk.Button(bottom_frame, text="Instagram", command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
         ttk.Button(bottom_frame, text="Donate ❤️", command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
 
+        # Add Update button
+        ttk.Button(bottom_frame, text="Update", command=self.check_for_update).pack(side="right", padx=10)
+
     def update_frequency(self, val):
         self.selected_frequency = int(val)  # Update the selected frequency
         self.now_playing.set(f"Broadcasting at: {self.selected_frequency} Hz")
+
+    def check_for_update(self):
+        # This function can be used to check for any software updates
+        messagebox.showinfo("Update", "Checking for software updates... (This is a placeholder)")
 
     def add_files(self):
         files = filedialog.askopenfilenames(title="Select Audio Files", filetypes=[("Audio", "*.mp3 *.wav")])
