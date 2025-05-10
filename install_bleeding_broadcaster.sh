@@ -6,13 +6,17 @@
 
 INSTALL_DIR="$HOME/BleedingBroadcaster"
 REPO_URL="https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"
-ICON_NAME="icon.png"
 SCRIPT_NAME="bleedingbroadcaster.py"
+ICON_NAME="icon.png"
 SCRIPT_PATH="$INSTALL_DIR/$SCRIPT_NAME"
 ICON_PATH="$INSTALL_DIR/$ICON_NAME"
-DESKTOP_FILE="$HOME/Desktop/BleedingBroadcaster.desktop"
+DESKTOP_DIR="$HOME/Desktop"
+DESKTOP_FILE="$DESKTOP_DIR/BleedingBroadcaster.desktop"
 
-# ---- Ensure dependencies ----
+# ---- Ensure desktop directory exists ----
+mkdir -p "$DESKTOP_DIR"
+
+# ---- Install dependencies ----
 echo "📦 Installing dependencies..."
 sudo apt-get update
 sudo apt-get install -y git python3 python3-pip python3-tk sox python3-pygame
@@ -26,20 +30,20 @@ else
   git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
-# ---- Validate main script ----
+# ---- Check main script exists ----
 if [ ! -f "$SCRIPT_PATH" ]; then
   echo "❌ Error: $SCRIPT_NAME not found at $SCRIPT_PATH"
   exit 1
 fi
 
-# ---- Validate icon ----
+# ---- Check icon exists or fall back ----
 if [ ! -f "$ICON_PATH" ]; then
-  echo "⚠️ Warning: Icon not found at $ICON_PATH, using default icon."
+  echo "⚠️ Icon not found at $ICON_PATH, using default Python icon."
   ICON_PATH="/usr/share/pixmaps/python.xpm"
 fi
 
 # ---- Create desktop shortcut ----
-echo "📁 Creating desktop shortcut..."
+echo "📁 Creating desktop shortcut at $DESKTOP_FILE..."
 cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
 Version=1.0
@@ -53,8 +57,8 @@ Categories=Utility;
 EOF
 
 chmod +x "$DESKTOP_FILE"
-echo "✅ Shortcut created at $DESKTOP_FILE"
 
-# ---- Launch application ----
-echo "🚀 Launching Bleeding Broadcaster..."
-python3 "$SCRIPT_PATH"
+echo ""
+echo "✅ Installation complete!"
+echo "📌 A desktop shortcut has been created."
+echo "🔁 Please restart the Bleeding Broadcaster if it's currently running."
