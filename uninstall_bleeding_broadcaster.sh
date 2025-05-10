@@ -1,21 +1,26 @@
 #!/bin/bash
 
-# Uninstaller script for Bleeding Broadcaster
+# Uninstaller for Bleeding Broadcaster
+
 INSTALL_DIR="$HOME/BleedingBroadcaster"
-DESKTOP_FILE="$HOME/Desktop/BleedingBroadcaster.desktop"
+DESKTOP_FILE="$HOME/.local/share/applications/bleedingbroadcaster.desktop"
 
-echo "Removing Bleeding Broadcaster files..."
+echo "Uninstalling Bleeding Broadcaster..."
 
-# Remove installation directory
+# Remove install directory
 if [ -d "$INSTALL_DIR" ]; then
-  rm -rf "$INSTALL_DIR"
-  echo "Deleted: $INSTALL_DIR"
+    rm -rf "$INSTALL_DIR"
+    echo "Removed installation directory: $INSTALL_DIR"
+else
+    echo "Installation directory not found."
 fi
 
-# Remove desktop shortcut
+# Remove application menu entry
 if [ -f "$DESKTOP_FILE" ]; then
-  rm "$DESKTOP_FILE"
-  echo "Deleted: $DESKTOP_FILE"
+    rm "$DESKTOP_FILE"
+    echo "Removed application menu shortcut."
+else
+    echo "Application menu shortcut not found."
 fi
 
-echo "Bleeding Broadcaster has been uninstalled."
+echo "Uninstallation complete."
