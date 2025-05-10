@@ -29,7 +29,7 @@ fi
 # Create desktop shortcut
 echo "Creating desktop shortcut..."
 
-cat <<EOF > "$DESKTOP_FILE"
+cat <<EOF > "$HOME/Desktop/BleedingBroadcaster.desktop"
 [Desktop Entry]
 Version=1.0
 Name=Bleeding Broadcaster
@@ -41,7 +41,7 @@ Type=Application
 Categories=Utility;
 EOF
 
-chmod +x "$DESKTOP_FILE"
+chmod +x "$HOME/Desktop/BleedingBroadcaster.desktop"
 
 # Ensure icon is readable
 if [ -f "$ICON_PATH" ]; then
