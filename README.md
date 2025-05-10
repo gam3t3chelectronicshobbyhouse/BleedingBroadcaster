@@ -36,15 +36,15 @@ Basic GPIO hookup (for broadcasting antenna)
 
 📦 Installation
 
-Run this one-liner in a terminal:
-
+```bash
 curl -sSL https://raw.githubusercontent.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster/main/install_bleeding_broadcaster.sh | bash
+```
 
 ❌ Uninstallation
 
-Remove everything with:
-
+```bash
 curl -sSL https://raw.githubusercontent.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster/main/uninstall_bleeding_broadcaster.sh | bash
+```
 
 📈 Connection Guide
 
