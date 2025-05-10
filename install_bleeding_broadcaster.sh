@@ -1,36 +1,60 @@
 #!/bin/bash
 
 # Bleeding Broadcaster Installer Script
-# Usage: curl -sSL https://raw.githubusercontent.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster/main/install_bleeding_broadcaster.sh | bash
+# Usage:
+#   curl -sSL https://raw.githubusercontent.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster/main/install_bleeding_broadcaster.sh | bash
 
 INSTALL_DIR="$HOME/BleedingBroadcaster"
 REPO_URL="https://github.com/gam3t3chelectronicshobbyhouse/BleedingBroadcaster"
 ICON_NAME="icon.png"
+SCRIPT_NAME="bleedingbroadcaster.py"
+SCRIPT_PATH="$INSTALL_DIR/$SCRIPT_NAME"
+ICON_PATH="$INSTALL_DIR/$ICON_NAME"
 DESKTOP_FILE="$HOME/Desktop/BleedingBroadcaster.desktop"
 
-# Ensure dependencies
+# ---- Ensure dependencies ----
+echo "📦 Installing dependencies..."
 sudo apt-get update
 sudo apt-get install -y git python3 python3-pip python3-tk sox python3-pygame
 
-# Clone or update repo
+# ---- Clone or update repo ----
 if [ -d "$INSTALL_DIR" ]; then
+  echo "🔄 Updating Bleeding Broadcaster..."
   cd "$INSTALL_DIR" && git pull
 else
+  echo "⬇️ Cloning Bleeding Broadcaster..."
   git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
+# ---- Validate main script ----
+if [ ! -f "$SCRIPT_PATH" ]; then
+  echo "❌ Error: $SCRIPT_NAME not found at $SCRIPT_PATH"
+  exit 1
+fi
+
+# ---- Validate icon ----
+if [ ! -f "$ICON_PATH" ]; then
+  echo "⚠️ Warning: Icon not found at $ICON_PATH, using default icon."
+  ICON_PATH="/usr/share/pixmaps/python.xpm"
+fi
+
+# ---- Create desktop shortcut ----
+echo "📁 Creating desktop shortcut..."
 cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
 Version=1.0
 Name=Bleeding Broadcaster
 Comment=Start Bleeding Broadcaster 
-Exec=/usr/bin/python3 /home/pi/BleedingBroadcaster/bleedingbroadcaster.py > /home/pi/Desktop/bleedingbroadcaster.log 2>&1
-Icon=icon.png
+Exec=/usr/bin/python3 $SCRIPT_PATH > $HOME/Desktop/bleedingbroadcaster.log 2>&1
+Icon=$ICON_PATH
 Terminal=false
 Type=Application
 Categories=Utility;
 EOF
 
 chmod +x "$DESKTOP_FILE"
-# Launch application
-python3 "$INSTALL_DIR/bleeding_broadcaster.py"
+echo "✅ Shortcut created at $DESKTOP_FILE"
+
+# ---- Launch application ----
+echo "🚀 Launching Bleeding Broadcaster..."
+python3 "$SCRIPT_PATH"
