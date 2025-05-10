@@ -19,20 +19,18 @@ else
   git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
-# Create desktop shortcut
 cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
 Version=1.0
 Name=Bleeding Broadcaster
 Comment=Start Bleeding Broadcaster 
-Exec=/usr/bin/python3 /home/pi/BleedingBroadcaster/bleedingbroadcaster.py
-Icon=/path/to/your/icon.png
+Exec=/usr/bin/python3 /home/pi/BleedingBroadcaster/bleedingbroadcaster.py > /home/pi/Desktop/bleedingbroadcaster.log 2>&1
+Icon=icon.png
 Terminal=false
 Type=Application
 Categories=Utility;
 EOF
 
 chmod +x "$DESKTOP_FILE"
-
 # Launch application
 python3 "$INSTALL_DIR/bleeding_broadcaster.py"
