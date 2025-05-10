@@ -22,13 +22,14 @@ fi
 # Create desktop shortcut
 cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
+Version=1.0
 Name=Bleeding Broadcaster
-Comment=Broadcast AM/FM audio for testing
-Exec=python3 $INSTALL_DIR/bleeding_broadcaster.py
-Icon=$INSTALL_DIR/$ICON_NAME
+Comment=Start Bleeding Broadcaster 
+Exec=/usr/bin/python3 /home/pi/BleedingBroadcaster/bleedingbroadcaster.py
+Icon=/path/to/your/icon.png
 Terminal=false
 Type=Application
-Categories=Audio;Utility;
+Categories=Utility;
 EOF
 
 chmod +x "$DESKTOP_FILE"
