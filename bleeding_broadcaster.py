@@ -2,12 +2,11 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
-import threading
 import pygame
 import subprocess
 import RPi.GPIO as GPIO
 from tkinter import PhotoImage
-from fm_am_transmitter import FMTransmitter, AMTransmitter
+from fm_am_transmitter import FMTransmitter, AMTransmitter  # Ensure correct import of transmitter classes
 
 APP_NAME = "Bleeding Broadcaster"
 ICON_FILE = "icon.png"
@@ -25,7 +24,9 @@ class BroadcasterGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(APP_NAME)
-        self.root.geometry("800x600")
+        self.root.geometry("800x550")
+        
+        # Set up icon if it exists
         if os.path.exists(ICON_FILE):
             self.root.iconphoto(False, tk.PhotoImage(file=ICON_FILE))
 
@@ -34,27 +35,33 @@ class BroadcasterGUI:
         self.loop = tk.BooleanVar()
         self.now_playing = tk.StringVar(value="Nothing Playing")
 
-        self.selected_mode = tk.StringVar(value="FM")
-        self.unit_display = "Hz"
-        self.selected_frequency_fm = 100000
-        self.selected_frequency_am = 1000
+        # Default frequency in Hz for FM and AM
+        self.selected_frequency = 100000  # Default FM frequency in Hz
+        self.selected_mode = "FM"  # Start with FM mode
+        self.unit_display = "Hz"  # Default unit display
         self.transmitter = None
+
+        # Initializing the appropriate transmitter (FM by default)
+        self.setup_transmitter()
+
+        self.setup_ui()
 
         os.makedirs(AUDIO_DIR, exist_ok=True)
         os.makedirs(PLAYLIST_DIR, exist_ok=True)
 
-        self.setup_transmitter()
-        self.setup_ui()
-
     def setup_transmitter(self):
-        if self.selected_mode.get() == "FM":
-            self.transmitter = FMTransmitter(4, self.selected_frequency_fm)
-        else:
-            self.transmitter = AMTransmitter(4, self.selected_frequency_am)
+        """Initialize the transmitter based on the selected mode."""
+        if self.selected_mode == "FM":
+            self.transmitter = FMTransmitter(4, self.selected_frequency)
+        elif self.selected_mode == "AM":
+            self.transmitter = AMTransmitter(4, self.selected_frequency)
 
     def setup_ui(self):
+        """Set up the user interface elements."""
         top_frame = tk.Frame(self.root)
         top_frame.pack(pady=10)
+
+        tk.Label(top_frame, text="Bleeding Broadcaster by Gam3t3ch Electronics", font=("Arial", 16, "bold")).pack()
 
         if os.path.exists(BANNER_FILE):
             self.banner_image = PhotoImage(file=BANNER_FILE).subsample(3)
@@ -72,22 +79,22 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
         ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
 
+        # AM/FM Mode Selector
         mode_frame = tk.LabelFrame(self.root, text="Broadcast Mode", padx=10, pady=10)
         mode_frame.pack(padx=10, pady=5, fill="x")
 
-        ttk.Radiobutton(mode_frame, text="FM", variable=self.selected_mode, value="FM", command=self.update_mode).pack(side="left")
-        ttk.Radiobutton(mode_frame, text="AM", variable=self.selected_mode, value="AM", command=self.update_mode).pack(side="left")
+        self.fm_rb = ttk.Radiobutton(mode_frame, text="FM", value="FM", variable=self.selected_mode,
+                                      command=self.update_mode).pack(side="left")
+        self.am_rb = ttk.Radiobutton(mode_frame, text="AM", value="AM", variable=self.selected_mode,
+                                      command=self.update_mode).pack(side="left")
 
-        freq_frame = tk.LabelFrame(self.root, text="Frequency Control", padx=10, pady=10)
+        # Frequency slider with the ability to choose units (Hz or AM/FM Bands)
+        freq_frame = tk.LabelFrame(self.root, text="Broadcast Frequency", padx=10, pady=10)
         freq_frame.pack(padx=10, pady=5, fill="x")
 
-        self.fm_slider = tk.Scale(freq_frame, from_=88000, to=108000, orient="horizontal", label="FM Frequency (Hz)", command=self.update_frequency)
-        self.fm_slider.set(self.selected_frequency_fm)
-        self.fm_slider.pack(fill="x")
-
-        self.am_slider = tk.Scale(freq_frame, from_=530, to=1700, orient="horizontal", label="AM Frequency (kHz)", command=self.update_frequency)
-        self.am_slider.set(self.selected_frequency_am)
-        self.am_slider.pack(fill="x")
+        self.freq_slider = tk.Scale(freq_frame, from_=20, to=80000, orient="horizontal", label="Frequency (Hz)", command=self.update_frequency)
+        self.freq_slider.set(self.selected_frequency)
+        self.freq_slider.pack(fill="x")
 
         self.unit_toggle = ttk.Checkbutton(self.root, text="Display in AM/FM Bands", command=self.toggle_unit)
         self.unit_toggle.pack(pady=10)
@@ -113,40 +120,37 @@ class BroadcasterGUI:
         ttk.Button(bottom_frame, text="Donate ❤️", command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
         ttk.Button(bottom_frame, text="Update", command=self.run_update_popup).pack(side="right", padx=10)
 
-        self.update_mode()
-
     def update_mode(self):
+        """Update mode (AM or FM) and update transmitter."""
+        self.selected_frequency = 100000  # Reset to default frequency on mode change
         self.setup_transmitter()
-        if self.selected_mode.get() == "FM":
-            self.fm_slider.config(state="normal")
-            self.am_slider.config(state="disabled")
-            self.update_frequency(self.fm_slider.get())
-        else:
-            self.am_slider.config(state="normal")
-            self.fm_slider.config(state="disabled")
-            self.update_frequency(self.am_slider.get())
+        self.update_frequency(self.selected_frequency)
 
     def toggle_unit(self):
-        self.unit_display = "AM/FM Bands" if self.unit_display == "Hz" else "Hz"
-        self.update_frequency(self.fm_slider.get() if self.selected_mode.get() == "FM" else self.am_slider.get())
+        """Toggle between Hz and AM/FM band display."""
+        if self.unit_display == "Hz":
+            self.unit_display = "AM/FM Bands"
+        else:
+            self.unit_display = "Hz"
+        self.update_frequency(self.selected_frequency)
 
     def update_frequency(self, val):
-        if self.selected_mode.get() == "FM":
-            self.selected_frequency_fm = int(val)
-            display_freq = f"{self.selected_frequency_fm} Hz" if self.unit_display == "Hz" else f"{self.selected_frequency_fm / 1000:.1f} MHz"
+        """Update frequency and display unit (Hz or AM/FM Bands)."""
+        self.selected_frequency = int(val)
+        if self.unit_display == "Hz":
+            self.now_playing.set(f"Broadcasting at: {self.selected_frequency} Hz")
         else:
-            self.selected_frequency_am = int(val)
-            display_freq = f"{self.selected_frequency_am * 1000} Hz" if self.unit_display == "Hz" else f"{self.selected_frequency_am} kHz"
-
-        self.now_playing.set(f"Broadcasting at: {display_freq}")
-
-        if hasattr(self.transmitter, "set_frequency"):
-            freq = self.selected_frequency_fm if self.selected_mode.get() == "FM" else self.selected_frequency_am * 1000
-            self.transmitter.set_frequency(freq)
+            if self.selected_mode == "FM":
+                fm_band = (self.selected_frequency - 88000) // 10  # Example conversion
+                self.now_playing.set(f"FM Band: {fm_band} MHz")
+            elif self.selected_mode == "AM":
+                am_band = (self.selected_frequency - 530000) // 10  # Example conversion
+                self.now_playing.set(f"AM Band: {am_band} kHz")
+        if hasattr(self.transmitter, 'set_frequency'):
+            self.transmitter.set_frequency(self.selected_frequency)
 
     def play_tone(self):
-        freq = self.selected_frequency_fm if self.selected_mode.get() == "FM" else self.selected_frequency_am * 1000
-        self.now_playing.set(f"Now Playing: Test Tone ({freq} Hz)")
+        self.now_playing.set(f"Now Playing: Test Tone ({self.selected_frequency} Hz)")
         if not self.transmitter.pwm_started:
             self.transmitter.start()
 
@@ -209,77 +213,37 @@ class BroadcasterGUI:
                         self.audio_files.append(path)
                         self.playlist_box.insert(tk.END, os.path.basename(path))
 
-def run_update_popup(self):
-    # Create the update window
-    update_win = tk.Toplevel(self.root)
-    update_win.title("Updating...")
-    update_win.geometry("500x350")
-    update_win.resizable(False, False)  # Prevent resizing the update window
+    def run_update_popup(self):
+        update_win = tk.Toplevel(self.root)
+        update_win.title("Updating...")
+        update_win.geometry("400x300")
+        log_text = tk.Text(update_win, wrap="word")
+        log_text.pack(expand=True, fill="both", padx=10, pady=10)
 
-    # Add a loading label
-    loading_label = tk.Label(update_win, text="Updating, please wait...", font=("Arial", 14, "bold"))
-    loading_label.pack(pady=10)
+        def run_update():
+            try:
+                process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"], stdout=subprocess.PIPE,
+                                           stderr=subprocess.STDOUT, text=True)
+                for line in process.stdout:
+                    log_text.insert(tk.END, line)
+                    log_text.see(tk.END)
+                process.wait()
+                if process.returncode == 0:
+                    log_text.insert(tk.END, "\nUpdate Completed.\n")
+                else:
+                    log_text.insert(tk.END, f"\nUpdate Failed with code {process.returncode}.\n")
+            except Exception as e:
+                log_text.insert(tk.END, f"\nError: {str(e)}\n")
+            ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
+            tk.Label(update_win, text="Please restart the program.", font=("Arial", 10, "italic")).pack(pady=2)
 
-    # Create a progress bar
-    progress = ttk.Progressbar(update_win, length=300, mode='indeterminate')
-    progress.pack(pady=10)
-    progress.start()
+        self.root.after(100, run_update)
 
-    # Create a text box for logging output
-    log_text = tk.Text(update_win, wrap="word", height=10, width=50)
-    log_text.pack(padx=10, pady=10)
+    def open_link(self, url):
+        subprocess.run(["xdg-open", url])
 
-def run_update_popup(self):
-    # Create the update window
-    update_win = tk.Toplevel(self.root)
-    update_win.title("Updating...")
-    update_win.geometry("400x250")
-    update_win.resizable(False, False)  # Prevent resizing the update window
 
-    # Add a loading label
-    loading_label = tk.Label(update_win, text="Updating, please wait...", font=("Arial", 12, "bold"))
-    loading_label.pack(pady=10)
-
-    # Create a text box for logging output
-    log_text = tk.Text(update_win, wrap="word", height=8, width=50)
-    log_text.pack(padx=10, pady=10)
-
-    # Function to run the update process
-    def run_update():
-        try:
-            # Run the update script and capture the output
-            process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"],
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            for line in process.stdout:
-                log_text.insert(tk.END, line)
-                log_text.see(tk.END)
-
-            # Wait for the process to complete
-            process.wait()
-
-            # Check the process exit code
-            if process.returncode == 0:
-                log_text.insert(tk.END, "\n\nUpdate Completed Successfully!\n")
-                log_text.tag_add("success", "1.0", "end")
-                log_text.tag_config("success", foreground="green")
-            else:
-                log_text.insert(tk.END, f"\n\nUpdate Failed with code {process.returncode}.\n")
-                log_text.tag_add("fail", "1.0", "end")
-                log_text.tag_config("fail", foreground="red")
-
-        except Exception as e:
-            log_text.insert(tk.END, f"\n\nError: {str(e)}\n")
-            log_text.tag_add("error", "1.0", "end")
-            log_text.tag_config("error", foreground="red")
-
-        # Add a close button and a restart message
-        ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
-
-        tk.Label(update_win, text="Please restart the program to complete the update.", font=("Arial", 10, "italic")).pack(pady=10)
-
-    # Run the update after a slight delay
-    self.root.after(100, run_update)
-
+# Main execution
 if __name__ == "__main__":
     root = tk.Tk()
     gui = BroadcasterGUI(root)
