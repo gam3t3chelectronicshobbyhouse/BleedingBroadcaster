@@ -197,24 +197,30 @@ class BroadcasterGUI:
 
     def run_update_popup(self):
         update_win = tk.Toplevel(self.root)
-        update_win.title("Update Bleeding Broadcaster")
-        update_win.geometry("500x300")
+        update_win.title("Updating...")
+        update_win.geometry("450x300")
         log_text = tk.Text(update_win, wrap="word")
-        log_text.pack(fill="both", expand=True, padx=10, pady=10)
+        log_text.pack(expand=True, fill="both", padx=10, pady=10)
 
         def run_update():
             try:
-                process = subprocess.Popen(["bash", "update_bleeding_broadcaster.sh"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                update_script = os.path.join(script_dir, "update_bleeding_broadcaster.sh")
+                process = subprocess.Popen(["bash", update_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 for line in process.stdout:
                     log_text.insert(tk.END, line)
                     log_text.see(tk.END)
                 process.wait()
-                log_text.insert(tk.END, "\nUpdate Completed.\n" if process.returncode == 0 else f"\nUpdate Failed: Code {process.returncode}\n")
+                if process.returncode == 0:
+                    log_text.insert(tk.END, "\nUpdate Completed.\n")
+                else:
+                    log_text.insert(tk.END, f"\nUpdate Failed with code {process.returncode}.\n")
             except Exception as e:
-                log_text.insert(tk.END, f"Error: {str(e)}\n")
+                log_text.insert(tk.END, f"\nError: {str(e)}\n")
+            ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
+            tk.Label(update_win, text="Please restart the program.", font=("Arial", 10, "italic")).pack(pady=2)
 
-        threading.Thread(target=run_update).start()
-        ttk.Button(update_win, text="Close", command=update_win.destroy).pack(pady=5)
+        threading.Thread(target=run_update, daemon=True).start()
 
     def open_link(self, url):
         subprocess.run(["xdg-open", url])
