@@ -8,10 +8,12 @@ import RPi.GPIO as GPIO
 from fm_am_transmitter import FMTransmitter, AMTransmitter
 
 APP_NAME = "Bleeding Broadcaster"
-ICON_FILE = "icon.png"
-BANNER_FILE = "BleedingBroadcaster.png"
-AUDIO_DIR = "audio"
-PLAYLIST_DIR = "playlists"
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ICON_FILE = os.path.join(SCRIPT_DIR, "icon.png")
+BANNER_FILE = os.path.join(SCRIPT_DIR, "BleedingBroadcaster.png")
+AUDIO_DIR = os.path.join(SCRIPT_DIR, "audio")
+PLAYLIST_DIR = os.path.join(SCRIPT_DIR, "playlists")
 
 pygame.mixer.init()
 GPIO.setmode(GPIO.BCM)
@@ -73,14 +75,12 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
         ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
 
-        # Mode selection
         mode_frame = tk.LabelFrame(self.root, text="Mode Selection")
         mode_frame.pack(fill="x", padx=10, pady=5)
 
         ttk.Radiobutton(mode_frame, text="FM", variable=self.selected_mode, value="FM", command=self.update_mode).pack(side="left", padx=10)
         ttk.Radiobutton(mode_frame, text="AM", variable=self.selected_mode, value="AM", command=self.update_mode).pack(side="left", padx=10)
 
-        # Frequency sliders
         slider_frame = tk.Frame(self.root)
         slider_frame.pack(padx=10, pady=5, fill="x")
 
@@ -219,7 +219,6 @@ class BroadcasterGUI:
     def open_link(self, url):
         subprocess.run(["xdg-open", url])
 
-# Entry point
 if __name__ == "__main__":
     root = tk.Tk()
     gui = BroadcasterGUI(root)
