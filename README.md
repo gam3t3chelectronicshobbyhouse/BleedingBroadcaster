@@ -1,4 +1,4 @@
-⚠️ This software is for diagnostic and testing purposes only and should only be used within legal radio frequency ranges and power levels in your country.⚠️
+⚠️ This software is for diagnostic and testing purposes only and should only be used within legal radio frequency ranges and power levels in your country.
 
 
 Bleeding Broadcaster is an AM/FM signal broadcaster for the Raspberry Pi, designed specifically for audio diagnostics. Use it to test how signals bleed into active speakers and other audio systems. 
