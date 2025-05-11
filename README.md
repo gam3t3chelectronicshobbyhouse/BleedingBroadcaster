@@ -17,7 +17,7 @@ Connect a 75–100cm long wire to GPIO4 to act as your antenna.
 
 Optional: Add a 75-ohm resistor in series with the wire.
 
-⚠️ This software is for diagnostic and testing purposes only and should only be used within legal radio frequency ranges and power levels in your country.⚠️
+⚠️ This software is for diagnostic and testing purposes only and should only be used within legal radio frequency ranges and power levels in your country.
 
 
 👨‍🔧 Created by
