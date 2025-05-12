@@ -5,7 +5,7 @@ import pygame
 import threading
 import subprocess
 import RPi.GPIO as GPIO
-from fm_am_transmitter import FMTransmitter, AMTransmitter
+from wideband_transmitter import WidebandTransmitter
 
 APP_NAME = "Bleeding Broadcaster"
 
@@ -23,7 +23,7 @@ class BroadcasterGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(APP_NAME)
-        self.root.geometry("800x600")
+        self.root.geometry("900x650")
         if os.path.exists(ICON_FILE):
             self.root.iconphoto(False, tk.PhotoImage(file=ICON_FILE))
 
@@ -32,26 +32,14 @@ class BroadcasterGUI:
         self.loop = tk.BooleanVar()
         self.now_playing = tk.StringVar(value="Nothing Playing")
 
-        self.selected_mode = tk.StringVar(value="FM")
-        self.fm_frequency = tk.IntVar(value=100000)
-        self.am_frequency = tk.IntVar(value=1000)
-        self.transmitter = None
-
-        self.setup_transmitter()
-        self.setup_ui()
+        self.frequency = tk.IntVar(value=100000)
+        self.transmitter = WidebandTransmitter(4, self.frequency.get())
 
         os.makedirs(AUDIO_DIR, exist_ok=True)
         os.makedirs(PLAYLIST_DIR, exist_ok=True)
 
-    def setup_transmitter(self):
-        freq = self.get_current_frequency()
-        if self.selected_mode.get() == "FM":
-            self.transmitter = FMTransmitter(4, freq)
-        else:
-            self.transmitter = AMTransmitter(4, freq)
-
-    def get_current_frequency(self):
-        return self.fm_frequency.get() if self.selected_mode.get() == "FM" else self.am_frequency.get()
+        self.setup_ui()
+        self.update_frequency_display(None)
 
     def setup_ui(self):
         top_frame = tk.Frame(self.root)
@@ -75,22 +63,26 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
         ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
 
-        mode_frame = tk.LabelFrame(self.root, text="Mode Selection")
-        mode_frame.pack(fill="x", padx=10, pady=5)
+        # Frequency input and slider
+        freq_frame = tk.LabelFrame(self.root, text="Frequency Selector")
+        freq_frame.pack(padx=10, pady=10, fill="x")
 
-        ttk.Radiobutton(mode_frame, text="FM", variable=self.selected_mode, value="FM", command=self.update_mode).pack(side="left", padx=10)
-        ttk.Radiobutton(mode_frame, text="AM", variable=self.selected_mode, value="AM", command=self.update_mode).pack(side="left", padx=10)
+        input_frame = tk.Frame(freq_frame)
+        input_frame.pack(fill="x", pady=5)
 
-        slider_frame = tk.Frame(self.root)
-        slider_frame.pack(padx=10, pady=5, fill="x")
+        tk.Label(input_frame, text="Frequency (Hz):").pack(side="left")
+        self.freq_entry = ttk.Entry(input_frame, width=10)
+        self.freq_entry.pack(side="left", padx=5)
+        self.freq_entry.bind("<Return>", self.set_frequency_from_entry)
 
-        self.fm_slider = tk.Scale(slider_frame, from_=88000, to=108000, orient="horizontal", label="FM Frequency (Hz)", variable=self.fm_frequency, command=self.update_frequency)
-        self.fm_slider.pack(fill="x", pady=5)
+        self.slider_canvas = tk.Canvas(freq_frame, height=80, bg="white")
+        self.slider_canvas.pack(fill="x", padx=10, pady=10)
+        self.slider = tk.Scale(freq_frame, from_=0, to=108000, orient="horizontal",
+                               showvalue=False, variable=self.frequency,
+                               command=self.update_frequency_display, length=800)
+        self.slider.pack(padx=10, fill="x")
 
-        self.am_slider = tk.Scale(slider_frame, from_=530, to=1700, orient="horizontal", label="AM Frequency (Hz)", variable=self.am_frequency, command=self.update_frequency)
-        self.am_slider.pack(fill="x", pady=5)
-
-        self.update_slider_state()
+        self.draw_frequency_bands()
 
         playlist_frame = tk.LabelFrame(self.root, text="Playlist")
         playlist_frame.pack(padx=10, pady=10, fill="both", expand=True)
@@ -113,32 +105,45 @@ class BroadcasterGUI:
         ttk.Button(bottom_frame, text="Instagram", command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
         ttk.Button(bottom_frame, text="YouTube", command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
 
-    def update_mode(self):
-        self.setup_transmitter()
-        self.update_slider_state()
-        self.update_frequency(None)
+    def draw_frequency_bands(self):
+        self.slider_canvas.delete("all")
+        width = self.slider_canvas.winfo_width() or 800
+        bands = [
+            (0, 3000, "CB Band", "lightblue"),
+            (530, 1700, "AM Band", "orange"),
+            (88000, 108000, "FM Band", "lightgreen"),
+        ]
+        for low, high, label, color in bands:
+            x1 = int((low / 108000) * width)
+            x2 = int((high / 108000) * width)
+            self.slider_canvas.create_rectangle(x1, 10, x2, 60, fill=color, outline="")
+            self.slider_canvas.create_text((x1 + x2) // 2, 35, text=label, font=("Arial", 10, "bold"))
 
-    def update_slider_state(self):
-        if self.selected_mode.get() == "FM":
-            self.fm_slider.config(state="normal")
-            self.am_slider.config(state="disabled")
-        else:
-            self.fm_slider.config(state="disabled")
-            self.am_slider.config(state="normal")
-
-    def update_frequency(self, _):
-        freq = self.get_current_frequency()
+    def update_frequency_display(self, _):
+        freq = self.frequency.get()
         self.now_playing.set(f"Broadcasting at: {freq} Hz")
         if hasattr(self.transmitter, 'set_frequency'):
             self.transmitter.set_frequency(freq)
+        self.freq_entry.delete(0, tk.END)
+        self.freq_entry.insert(0, str(freq))
+
+    def set_frequency_from_entry(self, event):
+        try:
+            val = int(self.freq_entry.get())
+            val = max(0, min(108000, val))
+            self.frequency.set(val)
+            self.update_frequency_display(None)
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Please enter a valid frequency.")
 
     def play_tone(self):
-        self.now_playing.set(f"Now Playing: Test Tone ({self.get_current_frequency()} Hz)")
+        self.now_playing.set(f"Now Playing: Test Tone ({self.frequency.get()} Hz)")
         if not self.transmitter.pwm_started:
             self.transmitter.start()
 
     def sweep_tone(self):
         self.now_playing.set("Now Playing: Sweep Tone")
+        # Implement sweep logic if desired
 
     def stop_audio_and_tone(self):
         pygame.mixer.music.stop()
@@ -204,8 +209,7 @@ class BroadcasterGUI:
 
         def run_update():
             try:
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                update_script = os.path.join(script_dir, "update_bleeding_broadcaster.sh")
+                update_script = os.path.join(SCRIPT_DIR, "update_bleeding_broadcaster.sh")
                 process = subprocess.Popen(["bash", update_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 for line in process.stdout:
                     log_text.insert(tk.END, line)
