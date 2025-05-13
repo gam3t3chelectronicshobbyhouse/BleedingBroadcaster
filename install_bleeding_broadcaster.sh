@@ -11,7 +11,7 @@ DESKTOP_FILE="$APPLICATIONS_DIR/bleedingbroadcaster.desktop"
 # Ensure dependencies are installed
 echo "Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y git python3 python3-pip python3-tk sox python3-pygame
+sudo apt-get install -y git python3 python3-pip python3-tk sox python3-pygame rtl-sdr
 
 # Clone or update the repository
 if [ -d "$INSTALL_DIR" ]; then
