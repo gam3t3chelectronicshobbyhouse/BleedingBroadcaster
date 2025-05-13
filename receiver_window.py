@@ -1,91 +1,94 @@
-
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox
+import subprocess
 import threading
-from rtlsdr import RtlSdr
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class ReceiverWindow:
-    def __init__(self, master=None):
-        self.window = tk.Toplevel(master)
-        self.window.title("RTL-SDR Receiver")
-        self.window.geometry("800x600")
+    def __init__(self, root):
+        self.root = root
+        self.root.title("RTL-SDR Receiver")
+        self.root.geometry("400x250")
+        self.root.resizable(False, False)
 
-        # Frequency input
-        freq_frame = ttk.Frame(self.window)
-        freq_frame.pack(pady=10)
-        ttk.Label(freq_frame, text="Frequency (MHz):").pack(side=tk.LEFT)
-        self.freq_entry = ttk.Entry(freq_frame, width=10)
-        self.freq_entry.pack(side=tk.LEFT, padx=5)
-        self.freq_entry.insert(0, "100.1")  # Default frequency
+        self.freq_var = tk.StringVar(value="100000000")  # Default: 100 MHz
+        self.mode_var = tk.StringVar(value="fm")
 
-        # Control buttons
-        control_frame = ttk.Frame(self.window)
-        control_frame.pack(pady=10)
-        self.start_button = ttk.Button(control_frame, text="Start", command=self.start_receiving)
-        self.start_button.pack(side=tk.LEFT, padx=5)
-        self.stop_button = ttk.Button(control_frame, text="Stop", command=self.stop_receiving, state=tk.DISABLED)
-        self.stop_button.pack(side=tk.LEFT, padx=5)
+        self.receiver_process = None
 
-        # Matplotlib figure
-        self.fig, self.ax = plt.subplots(figsize=(8, 4))
-        self.ax.set_title("Spectrum")
-        self.ax.set_xlabel("Frequency (MHz)")
-        self.ax.set_ylabel("Relative power (dB)")
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.window)
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.setup_ui()
 
-        # SDR and threading
-        self.sdr = None
-        self.running = False
-        self.thread = None
+    def setup_ui(self):
+        frame = tk.Frame(self.root, padx=10, pady=10)
+        frame.pack(expand=True, fill="both")
 
-        # Handle window close
-        self.window.protocol("WM_DELETE_WINDOW", self.on_close)
+        tk.Label(frame, text="Frequency (Hz):").grid(row=0, column=0, sticky="e", pady=5)
+        self.freq_entry = ttk.Entry(frame, textvariable=self.freq_var, width=20)
+        self.freq_entry.grid(row=0, column=1, pady=5)
 
-    def start_receiving(self):
+        tk.Label(frame, text="Mode:").grid(row=1, column=0, sticky="e", pady=5)
+        mode_menu = ttk.Combobox(frame, textvariable=self.mode_var, values=["fm", "am", "usb", "lsb"], state="readonly")
+        mode_menu.grid(row=1, column=1, pady=5)
+
+        self.start_button = ttk.Button(frame, text="Start Receiver", command=self.start_receiver)
+        self.start_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        self.stop_button = ttk.Button(frame, text="Stop Receiver", command=self.stop_receiver, state="disabled")
+        self.stop_button.grid(row=3, column=0, columnspan=2, pady=5)
+
+    def start_receiver(self):
+        freq = self.freq_var.get()
+        mode = self.mode_var.get()
+
         try:
-            freq_mhz = float(self.freq_entry.get())
+            int(freq)
         except ValueError:
-            messagebox.showerror("Invalid Input", "Please enter a valid frequency in MHz.")
+            messagebox.showerror("Invalid Frequency", "Please enter a valid numeric frequency in Hz.")
             return
 
-        self.sdr = RtlSdr()
-        self.sdr.sample_rate = 2.4e6  # Hz
-        self.sdr.center_freq = freq_mhz * 1e6  # Hz
-        self.sdr.gain = 'auto'
+        if self.receiver_process:
+            self.stop_receiver()
 
-        self.running = True
-        self.start_button.config(state=tk.DISABLED)
-        self.stop_button.config(state=tk.NORMAL)
-        self.thread = threading.Thread(target=self.receive_loop, daemon=True)
-        self.thread.start()
+        self.start_button.config(state="disabled")
+        self.stop_button.config(state="normal")
 
-    def stop_receiving(self):
-        self.running = False
-        self.start_button.config(state=tk.NORMAL)
-        self.stop_button.config(state=tk.DISABLED)
-        if self.sdr:
-            self.sdr.close()
-            self.sdr = None
+        thread = threading.Thread(target=self.run_receiver_process, args=(freq, mode), daemon=True)
+        thread.start()
 
-    def receive_loop(self):
-        while self.running:
-            try:
-                samples = self.sdr.read_samples(256*1024)
-                self.ax.cla()
-                self.ax.psd(samples, NFFT=1024, Fs=self.sdr.sample_rate / 1e6, Fc=self.sdr.center_freq / 1e6)
-                self.ax.set_xlabel("Frequency (MHz)")
-                self.ax.set_ylabel("Relative power (dB)")
-                self.ax.set_title("Spectrum")
-                self.canvas.draw()
-            except Exception as e:
-                print(f"Error: {e}")
-                self.stop_receiving()
-                break
+    def run_receiver_process(self, freq, mode):
+        mode_flags = {
+            "fm": ["-M", "fm", "-s", "200k", "-A", "fast", "-l", "0"],
+            "am": ["-M", "am", "-s", "10k", "-l", "0"],
+            "usb": ["-M", "usb", "-s", "10k", "-l", "0"],
+            "lsb": ["-M", "lsb", "-s", "10k", "-l", "0"]
+        }
+
+        cmd = ["rtl_fm", "-f", freq] + mode_flags.get(mode, []) + ["-"]
+        try:
+            self.receiver_process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            self.aplay_process = subprocess.Popen(["aplay", "-r", "22050", "-f", "S16_LE"], stdin=self.receiver_process.stdout)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to start receiver:\n{e}")
+            self.start_button.config(state="normal")
+            self.stop_button.config(state="disabled")
+
+    def stop_receiver(self):
+        if self.receiver_process:
+            self.receiver_process.terminate()
+            self.receiver_process = None
+        if hasattr(self, 'aplay_process') and self.aplay_process:
+            self.aplay_process.terminate()
+            self.aplay_process = None
+
+        self.start_button.config(state="normal")
+        self.stop_button.config(state="disabled")
 
     def on_close(self):
-        self.stop_receiving()
-        self.window.destroy()
+        self.stop_receiver()
+        self.root.destroy()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ReceiverWindow(root)
+    root.protocol("WM_DELETE_WINDOW", app.on_close)
+    root.mainloop()
