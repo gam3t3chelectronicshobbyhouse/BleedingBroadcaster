@@ -62,8 +62,8 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Pause", command=self.pause_audio).grid(row=0, column=3, padx=5)
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
         ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
+        ttk.Button(control_frame, text="Launch Receiver", command=self.launch_receiver_window).grid(row=0, column=6, padx=5)
 
-        # Frequency input and slider
         freq_frame = tk.LabelFrame(self.root, text="Frequency Selector")
         freq_frame.pack(padx=10, pady=10, fill="x")
 
@@ -143,7 +143,7 @@ class BroadcasterGUI:
 
     def sweep_tone(self):
         self.now_playing.set("Now Playing: Sweep Tone")
-        # Implement sweep logic if desired
+        # Sweep tone logic placeholder
 
     def stop_audio_and_tone(self):
         pygame.mixer.music.stop()
@@ -225,6 +225,13 @@ class BroadcasterGUI:
             tk.Label(update_win, text="Please restart the program.", font=("Arial", 10, "italic")).pack(pady=2)
 
         threading.Thread(target=run_update, daemon=True).start()
+
+    def launch_receiver_window(self):
+        receiver_script = os.path.join(SCRIPT_DIR, "receiver_window.py")
+        if os.path.isfile(receiver_script):
+            subprocess.Popen(["python3", receiver_script])
+        else:
+            messagebox.showerror("Missing Script", "receiver_window.py not found in the application directory.")
 
     def open_link(self, url):
         subprocess.run(["xdg-open", url])
