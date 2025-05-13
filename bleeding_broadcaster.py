@@ -6,6 +6,7 @@ import threading
 import subprocess
 import RPi.GPIO as GPIO
 from wideband_transmitter import WidebandTransmitter
+from receiver_window import open_receiver_window
 
 APP_NAME = "Bleeding Broadcaster"
 
@@ -23,7 +24,7 @@ class BroadcasterGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(APP_NAME)
-        self.root.geometry("900x650")
+        self.root.state("zoomed")  # Maximized on launch
         if os.path.exists(ICON_FILE):
             self.root.iconphoto(False, tk.PhotoImage(file=ICON_FILE))
 
@@ -31,7 +32,6 @@ class BroadcasterGUI:
         self.current_index = 0
         self.loop = tk.BooleanVar()
         self.now_playing = tk.StringVar(value="Nothing Playing")
-
         self.frequency = tk.IntVar(value=100000)
         self.transmitter = WidebandTransmitter(4, self.frequency.get())
 
@@ -61,9 +61,12 @@ class BroadcasterGUI:
         ttk.Button(control_frame, text="Play", command=self.play_audio).grid(row=0, column=2, padx=5)
         ttk.Button(control_frame, text="Pause", command=self.pause_audio).grid(row=0, column=3, padx=5)
         ttk.Button(control_frame, text="Stop", command=self.stop_audio_and_tone).grid(row=0, column=4, padx=5)
-        ttk.Checkbutton(control_frame, text="Loop Playlist", variable=self.loop).grid(row=0, column=5, padx=5)
-        ttk.Button(control_frame, text="Launch Receiver", command=self.launch_receiver_window).grid(row=0, column=6, padx=5)
 
+        loop_frame = tk.Frame(self.root)
+        loop_frame.pack(pady=5)
+        ttk.Checkbutton(loop_frame, text="Loop Playlist", variable=self.loop).pack()
+
+        # Frequency input and slider
         freq_frame = tk.LabelFrame(self.root, text="Frequency Selector")
         freq_frame.pack(padx=10, pady=10, fill="x")
 
@@ -75,14 +78,12 @@ class BroadcasterGUI:
         self.freq_entry.pack(side="left", padx=5)
         self.freq_entry.bind("<Return>", self.set_frequency_from_entry)
 
-        self.slider_canvas = tk.Canvas(freq_frame, height=80, bg="white")
-        self.slider_canvas.pack(fill="x", padx=10, pady=10)
         self.slider = tk.Scale(freq_frame, from_=0, to=108000, orient="horizontal",
                                showvalue=False, variable=self.frequency,
                                command=self.update_frequency_display, length=800)
         self.slider.pack(padx=10, fill="x")
 
-        self.draw_frequency_bands()
+        self.slider.bind("<Configure>", lambda e: self.draw_frequency_bands(freq_frame))
 
         playlist_frame = tk.LabelFrame(self.root, text="Playlist")
         playlist_frame.pack(padx=10, pady=10, fill="both", expand=True)
@@ -100,14 +101,20 @@ class BroadcasterGUI:
         bottom_frame = tk.Frame(self.root)
         bottom_frame.pack(side="bottom", fill="x", pady=10)
 
+        ttk.Button(bottom_frame, text="Launch Receiver", command=open_receiver_window).pack(side="left", padx=10)
         ttk.Button(bottom_frame, text="Update", command=self.run_update_popup).pack(side="right", padx=10)
         ttk.Button(bottom_frame, text="Donate ❤️", command=lambda: self.open_link("https://paypal.me/gam3t3ch")).pack(side="right", padx=10)
         ttk.Button(bottom_frame, text="Instagram", command=lambda: self.open_link("https://www.instagram.com/gam3t3chhobbyhouse/")).pack(side="left", padx=10)
         ttk.Button(bottom_frame, text="YouTube", command=lambda: self.open_link("https://www.youtube.com/gam3t3chelectronics")).pack(side="left", padx=10)
 
-    def draw_frequency_bands(self):
-        self.slider_canvas.delete("all")
-        width = self.slider_canvas.winfo_width() or 800
+    def draw_frequency_bands(self, parent):
+        for widget in parent.pack_slaves():
+            if isinstance(widget, tk.Canvas):
+                widget.destroy()
+
+        canvas = tk.Canvas(parent, height=50, bg="white")
+        canvas.pack(fill="x", padx=10)
+        width = canvas.winfo_width() or 800
         bands = [
             (0, 3000, "CB Band", "lightblue"),
             (530, 1700, "AM Band", "orange"),
@@ -116,8 +123,8 @@ class BroadcasterGUI:
         for low, high, label, color in bands:
             x1 = int((low / 108000) * width)
             x2 = int((high / 108000) * width)
-            self.slider_canvas.create_rectangle(x1, 10, x2, 60, fill=color, outline="")
-            self.slider_canvas.create_text((x1 + x2) // 2, 35, text=label, font=("Arial", 10, "bold"))
+            canvas.create_rectangle(x1, 10, x2, 40, fill=color, outline="")
+            canvas.create_text((x1 + x2) // 2, 25, text=label, font=("Arial", 10, "bold"))
 
     def update_frequency_display(self, _):
         freq = self.frequency.get()
@@ -143,7 +150,7 @@ class BroadcasterGUI:
 
     def sweep_tone(self):
         self.now_playing.set("Now Playing: Sweep Tone")
-        # Sweep tone logic placeholder
+        # Implement sweep logic if desired
 
     def stop_audio_and_tone(self):
         pygame.mixer.music.stop()
@@ -226,17 +233,10 @@ class BroadcasterGUI:
 
         threading.Thread(target=run_update, daemon=True).start()
 
-    def launch_receiver_window(self):
-        receiver_script = os.path.join(SCRIPT_DIR, "receiver_window.py")
-        if os.path.isfile(receiver_script):
-            subprocess.Popen(["python3", receiver_script])
-        else:
-            messagebox.showerror("Missing Script", "receiver_window.py not found in the application directory.")
-
     def open_link(self, url):
         subprocess.run(["xdg-open", url])
 
 if __name__ == "__main__":
     root = tk.Tk()
-    gui = BroadcasterGUI(root)
+    app = BroadcasterGUI(root)
     root.mainloop()
