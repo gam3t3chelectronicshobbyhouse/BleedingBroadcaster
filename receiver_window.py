@@ -1,94 +1,134 @@
-import os
-import tkinter as tk
-from tkinter import ttk, messagebox
-import subprocess
-import threading
+from tkinter import *
+from tkinter import ttk
 
 class ReceiverWindow:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("RTL-SDR Receiver")
-        self.root.geometry("400x250")
-        self.root.resizable(False, False)
+    def __init__(self, master):
+        self.master = Toplevel(master)
+        self.master.title("Receiver Window - SDR Control Panel")
+        self.master.geometry("1000x700")
 
-        self.freq_var = tk.StringVar(value="100000000")  # Default: 100 MHz
-        self.mode_var = tk.StringVar(value="fm")
+        # Main Paned Layout
+        main_frame = Frame(self.master)
+        main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-        self.receiver_process = None
+        # Spectrum / Waterfall Toggle and Display Placeholder
+        display_controls = Frame(main_frame)
+        display_controls.pack(fill=X, pady=(0, 10))
 
-        self.setup_ui()
+        self.display_mode = StringVar(value="Waterfall")
+        ttk.Label(display_controls, text="Display Mode:").pack(side=LEFT)
+        ttk.Combobox(display_controls, textvariable=self.display_mode, values=["Waterfall", "Spectrum"]).pack(side=LEFT, padx=5)
+        ttk.Button(display_controls, text="Toggle", command=self.toggle_display_mode).pack(side=LEFT, padx=5)
 
-    def setup_ui(self):
-        frame = tk.Frame(self.root, padx=10, pady=10)
-        frame.pack(expand=True, fill="both")
+        display_canvas = Canvas(main_frame, height=200, bg="black")
+        display_canvas.pack(fill=X, pady=5)
 
-        tk.Label(frame, text="Frequency (Hz):").grid(row=0, column=0, sticky="e", pady=5)
-        self.freq_entry = ttk.Entry(frame, textvariable=self.freq_var, width=20)
-        self.freq_entry.grid(row=0, column=1, pady=5)
+        # Frequency and Demodulation Controls
+        control_frame = LabelFrame(main_frame, text="Tuning and Demodulation")
+        control_frame.pack(fill=X, pady=10)
 
-        tk.Label(frame, text="Mode:").grid(row=1, column=0, sticky="e", pady=5)
-        mode_menu = ttk.Combobox(frame, textvariable=self.mode_var, values=["fm", "am", "usb", "lsb"], state="readonly")
-        mode_menu.grid(row=1, column=1, pady=5)
+        Label(control_frame, text="Frequency (Hz):").grid(row=0, column=0, sticky=W)
+        self.freq_entry = Entry(control_frame, width=12)
+        self.freq_entry.insert(0, "100000000")
+        self.freq_entry.grid(row=0, column=1, padx=5)
 
-        self.start_button = ttk.Button(frame, text="Start Receiver", command=self.start_receiver)
-        self.start_button.grid(row=2, column=0, columnspan=2, pady=10)
+        Label(control_frame, text="Demodulation:").grid(row=0, column=2, sticky=W)
+        self.demod_mode = StringVar(value="FM")
+        ttk.Combobox(control_frame, textvariable=self.demod_mode, values=["FM", "AM", "USB", "LSB", "CW"]).grid(row=0, column=3, padx=5)
 
-        self.stop_button = ttk.Button(frame, text="Stop Receiver", command=self.stop_receiver, state="disabled")
-        self.stop_button.grid(row=3, column=0, columnspan=2, pady=5)
+        ttk.Button(control_frame, text="Tune", command=self.tune_frequency).grid(row=0, column=4, padx=10)
 
-    def start_receiver(self):
-        freq = self.freq_var.get()
-        mode = self.mode_var.get()
+        # Gain and Squelch
+        gain_squelch_frame = Frame(main_frame)
+        gain_squelch_frame.pack(fill=X, pady=10)
 
-        try:
-            int(freq)
-        except ValueError:
-            messagebox.showerror("Invalid Frequency", "Please enter a valid numeric frequency in Hz.")
-            return
+        Label(gain_squelch_frame, text="Audio Gain:").pack(side=LEFT, padx=5)
+        self.gain_slider = Scale(gain_squelch_frame, from_=0, to=100, orient=HORIZONTAL)
+        self.gain_slider.set(50)
+        self.gain_slider.pack(side=LEFT, padx=5)
 
-        if self.receiver_process:
-            self.stop_receiver()
+        Label(gain_squelch_frame, text="Squelch:").pack(side=LEFT, padx=5)
+        self.squelch_slider = Scale(gain_squelch_frame, from_=0, to=100, orient=HORIZONTAL)
+        self.squelch_slider.set(10)
+        self.squelch_slider.pack(side=LEFT, padx=5)
 
-        self.start_button.config(state="disabled")
-        self.stop_button.config(state="normal")
+        # Bookmarks and Scanning
+        bookmark_frame = LabelFrame(main_frame, text="Bookmarks and Scanning")
+        bookmark_frame.pack(fill=X, pady=10)
 
-        thread = threading.Thread(target=self.run_receiver_process, args=(freq, mode), daemon=True)
-        thread.start()
+        self.bookmark_listbox = Listbox(bookmark_frame, height=4)
+        self.bookmark_listbox.pack(side=LEFT, fill=BOTH, expand=True, padx=5, pady=5)
 
-    def run_receiver_process(self, freq, mode):
-        mode_flags = {
-            "fm": ["-M", "fm", "-s", "200k", "-A", "fast", "-l", "0"],
-            "am": ["-M", "am", "-s", "10k", "-l", "0"],
-            "usb": ["-M", "usb", "-s", "10k", "-l", "0"],
-            "lsb": ["-M", "lsb", "-s", "10k", "-l", "0"]
-        }
+        control_panel = Frame(bookmark_frame)
+        control_panel.pack(side=LEFT, padx=5)
 
-        cmd = ["rtl_fm", "-f", freq] + mode_flags.get(mode, []) + ["-"]
-        try:
-            self.receiver_process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            self.aplay_process = subprocess.Popen(["aplay", "-r", "22050", "-f", "S16_LE"], stdin=self.receiver_process.stdout)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to start receiver:\n{e}")
-            self.start_button.config(state="normal")
-            self.stop_button.config(state="disabled")
+        ttk.Button(control_panel, text="Add Bookmark", command=self.add_bookmark).pack(fill=X, pady=2)
+        ttk.Button(control_panel, text="Remove Selected", command=self.remove_bookmark).pack(fill=X, pady=2)
 
-    def stop_receiver(self):
-        if self.receiver_process:
-            self.receiver_process.terminate()
-            self.receiver_process = None
-        if hasattr(self, 'aplay_process') and self.aplay_process:
-            self.aplay_process.terminate()
-            self.aplay_process = None
+        ttk.Label(control_panel, text="Scan Range (Hz):").pack(pady=(10, 0))
+        scan_frame = Frame(control_panel)
+        scan_frame.pack()
 
-        self.start_button.config(state="normal")
-        self.stop_button.config(state="disabled")
+        self.scan_start = Entry(scan_frame, width=10)
+        self.scan_start.insert(0, "88000000")
+        self.scan_start.pack(side=LEFT, padx=2)
+        self.scan_stop = Entry(scan_frame, width=10)
+        self.scan_stop.insert(0, "108000000")
+        self.scan_stop.pack(side=LEFT, padx=2)
+        ttk.Button(control_panel, text="Start Scan", command=self.start_scan).pack(fill=X, pady=5)
 
-    def on_close(self):
-        self.stop_receiver()
-        self.root.destroy()
+        # Recording Controls
+        record_frame = LabelFrame(main_frame, text="Recording")
+        record_frame.pack(fill=X, pady=10)
+
+        self.is_recording = BooleanVar(value=False)
+        ttk.Button(record_frame, text="Start Recording", command=self.toggle_recording).pack(side=LEFT, padx=10)
+
+        self.status_label = Label(record_frame, text="Not Recording")
+        self.status_label.pack(side=LEFT)
+
+        # Signal Strength Meter
+        signal_frame = Frame(main_frame)
+        signal_frame.pack(fill=X, pady=10)
+
+        Label(signal_frame, text="Signal Strength:").pack(side=LEFT)
+        self.signal_progress = ttk.Progressbar(signal_frame, orient=HORIZONTAL, length=300, mode='determinate')
+        self.signal_progress.pack(side=LEFT, padx=5)
+        self.signal_progress['value'] = 25
+
+    def toggle_display_mode(self):
+        current = self.display_mode.get()
+        if current == "Waterfall":
+            self.display_mode.set("Spectrum")
+        else:
+            self.display_mode.set("Waterfall")
+
+    def tune_frequency(self):
+        freq = self.freq_entry.get()
+        mode = self.demod_mode.get()
+        print(f"Tuning to {freq} Hz using {mode} demodulation")
+
+    def add_bookmark(self):
+        freq = self.freq_entry.get()
+        self.bookmark_listbox.insert(END, freq)
+
+    def remove_bookmark(self):
+        selected = self.bookmark_listbox.curselection()
+        for idx in reversed(selected):
+            self.bookmark_listbox.delete(idx)
+
+    def start_scan(self):
+        start = self.scan_start.get()
+        stop = self.scan_stop.get()
+        print(f"Scanning from {start} Hz to {stop} Hz")
+
+    def toggle_recording(self):
+        self.is_recording.set(not self.is_recording.get())
+        status = "Recording..." if self.is_recording.get() else "Not Recording"
+        self.status_label.config(text=status)
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = ReceiverWindow(root)
-    root.protocol("WM_DELETE_WINDOW", app.on_close)
+    root = Tk()
+    root.withdraw()
+    ReceiverWindow(root)
     root.mainloop()
